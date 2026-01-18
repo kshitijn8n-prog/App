@@ -19,10 +19,36 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, onClose, 
     licenseNumber: ''
   });
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   if (!isOpen) return null;
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!formData.name.trim()) newErrors.name = 'Full name is required';
+    else if (formData.name.trim().length < 2) newErrors.name = 'Name is too short';
+
+    if (!formData.email.trim()) newErrors.email = 'Email is required';
+    else if (!emailRegex.test(formData.email)) newErrors.email = 'Please enter a valid email address';
+
+    if (role === 'student' && !formData.university.trim()) {
+      newErrors.university = 'University name is required';
+    }
+
+    if (role === 'landlord' && !formData.licenseNumber.trim()) {
+      newErrors.licenseNumber = 'License number is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
+
     setLoading(true);
 
     // Simulate API Verification Check
@@ -38,9 +64,10 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, onClose, 
       });
       setStep(3); // Success state
       setTimeout(() => {
-         onClose();
-         setStep(1); // Reset for next time
-         setFormData({ name: '', email: '', university: '', licenseNumber: '' });
+        onClose();
+        setStep(1); // Reset for next time
+        setFormData({ name: '', email: '', university: '', licenseNumber: '' });
+        setErrors({});
       }, 2000);
     }, 2000);
   };
@@ -48,7 +75,7 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, onClose, 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative">
-        <button 
+        <button
           onClick={onClose}
           className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition"
         >
@@ -66,54 +93,54 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, onClose, 
         ) : (
           <>
             <div className="px-8 pt-8 pb-6 bg-slate-50 border-b border-slate-100 text-center">
-               <div className="w-12 h-12 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <ShieldCheck size={24} />
-               </div>
-               <h2 className="text-xl font-bold text-slate-900">Identity Verification</h2>
-               <p className="text-sm text-slate-500 mt-1">Build trust by verifying your status.</p>
+              <div className="w-12 h-12 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ShieldCheck size={24} />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900">Identity Verification</h2>
+              <p className="text-sm text-slate-500 mt-1">Build trust by verifying your status.</p>
             </div>
 
             <div className="p-8">
               {step === 1 ? (
                 <div className="space-y-4">
-                   <p className="text-sm font-medium text-slate-700 mb-4 block">I am a...</p>
-                   <button 
-                     onClick={() => { setRole('student'); setStep(2); }}
-                     className="w-full p-4 rounded-xl border-2 border-slate-100 hover:border-brand-500 hover:bg-brand-50 transition flex items-center gap-4 group text-left"
-                   >
-                     <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition">
-                       <GraduationCap size={20} />
-                     </div>
-                     <div>
-                       <span className="block font-bold text-slate-900">Student</span>
-                       <span className="text-xs text-slate-500">I need accommodation for my studies</span>
-                     </div>
-                   </button>
+                  <p className="text-sm font-medium text-slate-700 mb-4 block">I am a...</p>
+                  <button
+                    onClick={() => { setRole('student'); setStep(2); }}
+                    className="w-full p-4 rounded-xl border-2 border-slate-100 hover:border-brand-500 hover:bg-brand-50 transition flex items-center gap-4 group text-left"
+                  >
+                    <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition">
+                      <GraduationCap size={20} />
+                    </div>
+                    <div>
+                      <span className="block font-bold text-slate-900">Student</span>
+                      <span className="text-xs text-slate-500">I need accommodation for my studies</span>
+                    </div>
+                  </button>
 
-                   <button 
-                     onClick={() => { setRole('landlord'); setStep(2); }}
-                     className="w-full p-4 rounded-xl border-2 border-slate-100 hover:border-brand-500 hover:bg-brand-50 transition flex items-center gap-4 group text-left"
-                   >
-                     <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center group-hover:bg-emerald-200 transition">
-                       <Building2 size={20} />
-                     </div>
-                     <div>
-                       <span className="block font-bold text-slate-900">Landlord</span>
-                       <span className="text-xs text-slate-500">I own or manage properties</span>
-                     </div>
-                   </button>
+                  <button
+                    onClick={() => { setRole('landlord'); setStep(2); }}
+                    className="w-full p-4 rounded-xl border-2 border-slate-100 hover:border-brand-500 hover:bg-brand-50 transition flex items-center gap-4 group text-left"
+                  >
+                    <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center group-hover:bg-emerald-200 transition">
+                      <Building2 size={20} />
+                    </div>
+                    <div>
+                      <span className="block font-bold text-slate-900">Landlord</span>
+                      <span className="text-xs text-slate-500">I own or manage properties</span>
+                    </div>
+                  </button>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Full Legal Name</label>
-                    <input 
+                    <input
                       required
-                      type="text" 
+                      type="text"
                       className="w-full p-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm"
                       placeholder="e.g. John Doe"
                       value={formData.name}
-                      onChange={e => setFormData({...formData, name: e.target.value})}
+                      onChange={e => setFormData({ ...formData, name: e.target.value })}
                     />
                   </div>
 
@@ -121,39 +148,39 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, onClose, 
                     <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
                       {role === 'student' ? 'University Email' : 'Business Email'}
                     </label>
-                    <input 
+                    <input
                       required
-                      type="email" 
+                      type="email"
                       className="w-full p-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm"
                       placeholder={role === 'student' ? "name@university.ac.uk" : "name@property.com"}
                       value={formData.email}
-                      onChange={e => setFormData({...formData, email: e.target.value})}
+                      onChange={e => setFormData({ ...formData, email: e.target.value })}
                     />
                   </div>
 
                   {role === 'student' ? (
-                     <div>
-                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">University Name</label>
-                        <input 
-                          required
-                          type="text" 
-                          className="w-full p-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm"
-                          placeholder="e.g. Imperial College London"
-                          value={formData.university}
-                          onChange={e => setFormData({...formData, university: e.target.value})}
-                        />
-                     </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase mb-1">University Name</label>
+                      <input
+                        required
+                        type="text"
+                        className="w-full p-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm"
+                        placeholder="e.g. Imperial College London"
+                        value={formData.university}
+                        onChange={e => setFormData({ ...formData, university: e.target.value })}
+                      />
+                    </div>
                   ) : (
                     <div>
-                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Property License / Registration</label>
-                        <input 
-                          required
-                          type="text" 
-                          className="w-full p-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm"
-                          placeholder="e.g. PR-123456"
-                          value={formData.licenseNumber}
-                          onChange={e => setFormData({...formData, licenseNumber: e.target.value})}
-                        />
+                      <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Property License / Registration</label>
+                      <input
+                        required
+                        type="text"
+                        className="w-full p-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm"
+                        placeholder="e.g. PR-123456"
+                        value={formData.licenseNumber}
+                        onChange={e => setFormData({ ...formData, licenseNumber: e.target.value })}
+                      />
                     </div>
                   )}
 
@@ -168,14 +195,14 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, onClose, 
                   </div>
 
                   <div className="flex gap-3 mt-6">
-                    <button 
+                    <button
                       type="button"
                       onClick={() => setStep(1)}
                       className="flex-1 py-3 text-slate-600 font-bold text-sm hover:bg-slate-100 rounded-xl transition"
                     >
                       Back
                     </button>
-                    <button 
+                    <button
                       type="submit"
                       disabled={loading}
                       className="flex-[2] py-3 bg-brand-600 text-white font-bold text-sm rounded-xl hover:bg-brand-700 transition flex items-center justify-center gap-2 disabled:opacity-70"

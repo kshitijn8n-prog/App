@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Room, Review } from '../types';
-import { 
-  X, MapPin, User, Star, CheckCircle, Wifi, Coffee, Book, 
+import {
+  X, MapPin, User, Star, CheckCircle, Wifi, Coffee, Book,
   Shield, Calendar, Send, Heart
 } from 'lucide-react';
-import { generateReviewSummary } from '../services/geminiService';
 
 interface RoomDetailsProps {
   room: Room;
@@ -20,13 +19,23 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({ room, onClose, onBook, isFavo
   const [reviews, setReviews] = useState<Review[]>(room.reviews);
   const [aiSummary, setAiSummary] = useState<string>('');
   const [loadingSummary, setLoadingSummary] = useState(false);
+  const [enquiryQuestion, setEnquiryQuestion] = useState('');
+  const [submittingEnquiry, setSubmittingEnquiry] = useState(false);
+  const [enquirySuccess, setEnquirySuccess] = useState(false);
 
   useEffect(() => {
     if (room.reviews.length > 0) {
       setLoadingSummary(true);
       const comments = room.reviews.map(r => r.comment);
-      generateReviewSummary(comments)
-        .then(summary => setAiSummary(summary))
+
+      fetch('/api/summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviews: comments })
+      })
+        .then(res => res.json())
+        .then(data => setAiSummary(data.summary))
+        .catch(() => setAiSummary("Could not load summary."))
         .finally(() => setLoadingSummary(false));
     }
   }, [room.id]);
@@ -34,7 +43,7 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({ room, onClose, onBook, isFavo
   const handleSubmitReview = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newReview.trim()) return;
-    
+
     const review: Review = {
       id: Date.now().toString(),
       author: 'You',
@@ -43,7 +52,7 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({ room, onClose, onBook, isFavo
       comment: newReview,
       university: 'International Student'
     };
-    
+
     setReviews([review, ...reviews]);
     setNewReview('');
   };
@@ -54,22 +63,22 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({ room, onClose, onBook, isFavo
       <div className="absolute inset-0 md:hidden" onClick={onClose}></div>
 
       <div className="bg-white w-full md:w-[600px] h-full shadow-2xl flex flex-col animate-slide-in-right overflow-hidden md:rounded-l-2xl">
-        
+
         {/* Header Image */}
         <div className="relative h-64 shrink-0 bg-slate-200">
           <img src={room.images[0]} alt={room.title} className="w-full h-full object-cover" />
-          
+
           <div className="absolute top-4 right-4 flex gap-2 z-10">
-            <button 
+            <button
               onClick={(e) => onToggleFavorite(e, room.id)}
               className="bg-white/90 p-2 rounded-full hover:bg-white text-slate-800 transition shadow-lg"
             >
-              <Heart 
-                size={20} 
-                className={`transition-colors ${isFavorite ? 'fill-rose-500 text-rose-500' : 'text-slate-700'}`} 
+              <Heart
+                size={20}
+                className={`transition-colors ${isFavorite ? 'fill-rose-500 text-rose-500' : 'text-slate-700'}`}
               />
             </button>
-            <button 
+            <button
               onClick={onClose}
               className="bg-white/90 p-2 rounded-full hover:bg-white text-slate-800 transition shadow-lg"
             >
@@ -88,13 +97,13 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({ room, onClose, onBook, isFavo
 
         {/* Tabs */}
         <div className="flex border-b border-slate-200 sticky top-0 bg-white z-10">
-          <button 
+          <button
             className={`flex-1 py-4 font-medium text-sm transition ${activeTab === 'details' ? 'text-brand-600 border-b-2 border-brand-600' : 'text-slate-500 hover:text-slate-700'}`}
             onClick={() => setActiveTab('details')}
           >
             Details & Booking
           </button>
-          <button 
+          <button
             className={`flex-1 py-4 font-medium text-sm transition ${activeTab === 'reviews' ? 'text-brand-600 border-b-2 border-brand-600' : 'text-slate-500 hover:text-slate-700'}`}
             onClick={() => setActiveTab('reviews')}
           >
@@ -157,6 +166,59 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({ room, onClose, onBook, isFavo
                   ))}
                 </div>
               </div>
+
+              {/* Enquiry Section */}
+              <div className="bg-brand-50 p-6 rounded-2xl border border-brand-100 mt-8">
+                <h3 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                  <Send size={18} className="text-brand-600" /> Have a question?
+                </h3>
+                <p className="text-sm text-slate-600 mb-4">Ask the landlord directly about this property.</p>
+
+                {enquirySuccess ? (
+                  <div className="bg-green-100 text-green-700 p-4 rounded-xl text-sm font-medium animate-fade-in">
+                    Thank you! Your question has been sent. You can check for replies in "My Queries".
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <textarea
+                      placeholder="e.g., Is the internet speed good for gaming? Are bills definitely included?"
+                      className="w-full p-4 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 outline-none h-24 transition-shadow"
+                      value={enquiryQuestion}
+                      onChange={(e) => setEnquiryQuestion(e.target.value)}
+                    />
+                    <button
+                      onClick={async () => {
+                        if (!enquiryQuestion.trim()) return;
+                        setSubmittingEnquiry(true);
+                        try {
+                          const res = await fetch('/api/enquiries', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              roomId: room.id,
+                              roomTitle: room.title,
+                              question: enquiryQuestion
+                            })
+                          });
+                          if (res.ok) {
+                            setEnquirySuccess(true);
+                            setEnquiryQuestion('');
+                            setTimeout(() => setEnquirySuccess(false), 5000);
+                          }
+                        } catch (err) {
+                          console.error("Enquiry failed", err);
+                        } finally {
+                          setSubmittingEnquiry(false);
+                        }
+                      }}
+                      disabled={submittingEnquiry || !enquiryQuestion.trim()}
+                      className="w-full bg-brand-600 text-white font-bold py-3 rounded-xl hover:bg-brand-700 disabled:opacity-50 transition shadow-md shadow-brand-100"
+                    >
+                      {submittingEnquiry ? 'Sending...' : 'Send Enquiry'}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="space-y-6">
@@ -165,7 +227,7 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({ room, onClose, onBook, isFavo
                 <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-4 rounded-xl border border-indigo-100">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="bg-white p-1 rounded-full shadow-sm">
-                        <span className="text-lg">✨</span>
+                      <span className="text-lg">✨</span>
                     </div>
                     <h3 className="font-bold text-indigo-900 text-sm">AI Summary</h3>
                   </div>
@@ -186,7 +248,7 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({ room, onClose, onBook, isFavo
                   onChange={(e) => setNewReview(e.target.value)}
                   className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm"
                 />
-                <button 
+                <button
                   type="submit"
                   disabled={!newReview.trim()}
                   className="absolute right-2 top-2 p-1.5 bg-brand-600 text-white rounded-lg disabled:opacity-50 hover:bg-brand-700 transition"
@@ -223,15 +285,15 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({ room, onClose, onBook, isFavo
         {/* Footer Action */}
         <div className="p-4 border-t border-slate-200 bg-white">
           <div className="flex items-center justify-between mb-3">
-             <div className="flex flex-col">
-               <span className="text-xs text-slate-500">Total Price</span>
-               <span className="text-xl font-bold text-slate-900">£{room.pricePerWeek}<span className="text-sm font-normal text-slate-500">/week</span></span>
-             </div>
-             <div className="text-right">
-                <span className="text-xs text-green-600 font-medium">Available {room.availableFrom}</span>
-             </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-slate-500">Total Price</span>
+              <span className="text-xl font-bold text-slate-900">£{room.pricePerWeek}<span className="text-sm font-normal text-slate-500">/week</span></span>
+            </div>
+            <div className="text-right">
+              <span className="text-xs text-green-600 font-medium">Available {room.availableFrom}</span>
+            </div>
           </div>
-          <button 
+          <button
             onClick={onBook}
             className="w-full bg-brand-600 text-white font-bold py-3.5 rounded-xl hover:bg-brand-700 active:scale-[0.98] transition shadow-md shadow-brand-200"
           >
