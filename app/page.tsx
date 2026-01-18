@@ -28,7 +28,30 @@ const App: React.FC = () => {
     useEffect(() => {
         fetchRooms();
         fetchWishlist();
+        const savedUser = localStorage.getItem('nest_user');
+        if (savedUser) {
+            const user = JSON.parse(savedUser);
+            if (user.type === 'landlord') {
+                window.location.href = '/landlord';
+                return;
+            }
+            if (user.type === 'admin') {
+                window.location.href = '/admin';
+                return;
+            }
+            setCurrentUser(user);
+        }
     }, []);
+
+    const handleVerify = (user: User) => {
+        setCurrentUser(user);
+        localStorage.setItem('nest_user', JSON.stringify(user));
+        if (user.type === 'landlord') {
+            window.location.href = '/landlord';
+        } else if (user.type === 'admin') {
+            window.location.href = '/admin';
+        }
+    };
 
     const fetchWishlist = async () => {
         try {
@@ -74,16 +97,45 @@ const App: React.FC = () => {
         setViewState(ViewState.HOME);
     };
 
-    const handleBookRoom = () => {
-        if (!currentUser) {
+    const handleBookRoom = async () => {
+        if (!currentUser || !selectedRoom) {
             setIsVerificationOpen(true);
             return;
         }
-        setViewState(ViewState.BOOKING_SUCCESS);
+
+        try {
+            const res = await fetch('/api/bookings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    roomId: selectedRoom.id,
+                    roomTitle: selectedRoom.title,
+                    tenantName: currentUser.name,
+                    tenantEmail: currentUser.email,
+                    landlordName: selectedRoom.landlord.name,
+                    pricePerWeek: selectedRoom.pricePerWeek
+                })
+            });
+
+            if (res.ok) {
+                setViewState(ViewState.BOOKING_SUCCESS);
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to send booking request');
+            }
+        } catch (error) {
+            console.error('Booking error:', error);
+            alert('An error occurred while booking');
+        }
     };
 
     const handleToggleFavorite = async (e: React.MouseEvent, roomId: string) => {
         e.stopPropagation();
+
+        if (!currentUser) {
+            setIsVerificationOpen(true);
+            return;
+        }
 
         // Optimistic update
         const isCurrentlySaved = savedRoomIds.includes(roomId);
@@ -187,19 +239,21 @@ const App: React.FC = () => {
     }
 
 
+    const handleLogout = () => {
+        setCurrentUser(null);
+        localStorage.removeItem('nest_user');
+        window.location.reload();
+    };
+
     const displayRooms = rooms;
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+        <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
             <Navbar
-                onHomeClick={() => {
-                    setViewState(ViewState.HOME);
-                    setRooms(MOCK_ROOMS);
-                    setSearchQuery('');
-                    setActiveFilters({});
-                }}
+                onHomeClick={() => setViewState(ViewState.HOME)}
                 onSavedClick={handleSavedClick}
                 onSignInClick={() => setIsVerificationOpen(true)}
+                onLogout={handleLogout}
                 currentUser={currentUser}
                 savedCount={savedRoomIds.length}
             />
@@ -207,7 +261,7 @@ const App: React.FC = () => {
             <VerificationModal
                 isOpen={isVerificationOpen}
                 onClose={() => setIsVerificationOpen(false)}
-                onVerify={(user) => setCurrentUser(user)}
+                onVerify={handleVerify}
             />
 
             {viewState === ViewState.HOME && (
@@ -308,6 +362,7 @@ const App: React.FC = () => {
                                         onClick={handleRoomClick}
                                         isFavorite={savedRoomIds.includes(room.id)}
                                         onToggleFavorite={handleToggleFavorite}
+                                        currentUser={currentUser}
                                     />
                                 ))}
                             </div>
@@ -334,16 +389,6 @@ const App: React.FC = () => {
                 )}
             </main>
 
-            {selectedRoom && viewState !== ViewState.BOOKING_SUCCESS && viewState !== ViewState.HOME && viewState !== ViewState.SAVED && (
-                <RoomDetails
-                    room={selectedRoom}
-                    onClose={handleCloseDetails}
-                    onBook={handleBookRoom}
-                    isFavorite={savedRoomIds.includes(selectedRoom.id)}
-                    onToggleFavorite={handleToggleFavorite}
-                />
-            )}
-
             {selectedRoom && viewState === ViewState.DETAILS && (
                 <RoomDetails
                     room={selectedRoom}
@@ -351,6 +396,8 @@ const App: React.FC = () => {
                     onBook={handleBookRoom}
                     isFavorite={savedRoomIds.includes(selectedRoom.id)}
                     onToggleFavorite={handleToggleFavorite}
+                    currentUser={currentUser}
+                    onSignInClick={() => setIsVerificationOpen(true)}
                 />
             )}
 
@@ -387,9 +434,6 @@ const App: React.FC = () => {
                                 <button onClick={handleSeed} className="text-slate-600 hover:text-slate-400 text-xs mt-4 block">
                                     (Demo) Seed DB
                                 </button>
-                                <a href="/admin" className="text-slate-600 hover:text-slate-400 text-xs mt-2 block">
-                                    Admin Dashboard
-                                </a>
                             </li>
                         </ul>
                     </div>

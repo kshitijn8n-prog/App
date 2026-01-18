@@ -9,10 +9,28 @@ import { Loader2 } from 'lucide-react';
 const WishlistPage = () => {
     const [wishlist, setWishlist] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [currentUser, setCurrentUser] = useState<any>(null);
 
     useEffect(() => {
+        const savedUser = localStorage.getItem('nest_user');
+        if (savedUser) {
+            const user = JSON.parse(savedUser);
+            if (user.type === 'landlord') {
+                window.location.href = '/landlord';
+                return;
+            }
+            setCurrentUser(user);
+        } else {
+            window.location.href = '/';
+            return;
+        }
         fetchWishlist();
     }, []);
+
+    const handleLogout = () => {
+        localStorage.removeItem('nest_user');
+        window.location.href = '/';
+    };
 
     const fetchWishlist = async () => {
         try {
@@ -51,7 +69,8 @@ const WishlistPage = () => {
                 onHomeClick={() => window.location.href = '/'}
                 onSavedClick={() => { }} // Already here
                 onSignInClick={() => { }}
-                currentUser={{ name: 'Demo User', email: 'demo@test.com', type: 'student', isVerified: true }}
+                onLogout={handleLogout}
+                currentUser={currentUser}
                 savedCount={wishlist.length}
             />
 
@@ -84,6 +103,7 @@ const WishlistPage = () => {
                                     onClick={(r) => window.location.href = `/?roomId=${r.id}`} // Simple nav or handle differently
                                     isFavorite={true}
                                     onToggleFavorite={handleToggleFavorite}
+                                    currentUser={currentUser}
                                 />
                             );
                         })}

@@ -47,8 +47,20 @@ export enum ViewState {
 export interface User {
   name: string;
   email: string;
-  type: 'student' | 'landlord';
+  type: 'student' | 'landlord' | 'admin';
   isVerified: boolean;
   university?: string; // for students
   licenseNumber?: string; // for landlords
+}
+
+export interface Booking {
+  id: string;
+  roomId: string;
+  roomTitle: string;
+  tenantName: string;
+  tenantEmail: string;
+  landlordName: string;
+  pricePerWeek: number;
+  status: 'PENDING' | 'SUCCESSFUL' | 'CANCELLED';
+  createdAt: Date;
 }

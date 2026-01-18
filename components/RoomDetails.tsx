@@ -11,9 +11,11 @@ interface RoomDetailsProps {
   onBook: () => void;
   isFavorite: boolean;
   onToggleFavorite: (e: React.MouseEvent, roomId: string) => void;
+  currentUser: any;
+  onSignInClick: () => void;
 }
 
-const RoomDetails: React.FC<RoomDetailsProps> = ({ room, onClose, onBook, isFavorite, onToggleFavorite }) => {
+const RoomDetails: React.FC<RoomDetailsProps> = ({ room, onClose, onBook, isFavorite, onToggleFavorite, currentUser, onSignInClick }) => {
   const [activeTab, setActiveTab] = useState<'details' | 'reviews'>('details');
   const [newReview, setNewReview] = useState('');
   const [reviews, setReviews] = useState<Review[]>(room.reviews);
@@ -69,15 +71,17 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({ room, onClose, onBook, isFavo
           <img src={room.images[0]} alt={room.title} className="w-full h-full object-cover" />
 
           <div className="absolute top-4 right-4 flex gap-2 z-10">
-            <button
-              onClick={(e) => onToggleFavorite(e, room.id)}
-              className="bg-white/90 p-2 rounded-full hover:bg-white text-slate-800 transition shadow-lg"
-            >
-              <Heart
-                size={20}
-                className={`transition-colors ${isFavorite ? 'fill-rose-500 text-rose-500' : 'text-slate-700'}`}
-              />
-            </button>
+            {currentUser && currentUser.type === 'student' && (
+              <button
+                onClick={(e) => onToggleFavorite(e, room.id)}
+                className="bg-white/90 p-2 rounded-full hover:bg-white text-slate-800 transition shadow-lg"
+              >
+                <Heart
+                  size={20}
+                  className={`transition-colors ${isFavorite ? 'fill-rose-500 text-rose-500' : 'text-slate-700'}`}
+                />
+              </button>
+            )}
             <button
               onClick={onClose}
               className="bg-white/90 p-2 rounded-full hover:bg-white text-slate-800 transition shadow-lg"
@@ -177,6 +181,20 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({ room, onClose, onBook, isFavo
                 {enquirySuccess ? (
                   <div className="bg-green-100 text-green-700 p-4 rounded-xl text-sm font-medium animate-fade-in">
                     Thank you! Your question has been sent. You can check for replies in "My Queries".
+                  </div>
+                ) : !currentUser ? (
+                  <div className="bg-white border border-slate-200 p-6 rounded-xl text-center">
+                    <p className="text-slate-600 text-sm mb-4">Please log in to ask a question about this property.</p>
+                    <button
+                      onClick={onSignInClick}
+                      className="bg-brand-600 text-white font-bold px-6 py-2 rounded-lg hover:bg-brand-700 transition"
+                    >
+                      Log In / Verify
+                    </button>
+                  </div>
+                ) : currentUser.type === 'landlord' ? (
+                  <div className="bg-slate-100 p-4 rounded-xl text-center">
+                    <p className="text-slate-500 text-xs italic">Landlords cannot send enquiries.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">

@@ -7,8 +7,21 @@ import { Loader2, MessageSquare, Clock, CheckCircle2 } from 'lucide-react';
 const MyQueriesPage = () => {
     const [enquiries, setEnquiries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [currentUser, setCurrentUser] = useState<any>(null);
 
     useEffect(() => {
+        const savedUser = localStorage.getItem('nest_user');
+        if (savedUser) {
+            const user = JSON.parse(savedUser);
+            if (user.type === 'landlord') {
+                window.location.href = '/landlord?tab=queries';
+                return;
+            }
+            setCurrentUser(user);
+        } else {
+            window.location.href = '/';
+            return;
+        }
         fetchEnquiries();
     }, []);
 
@@ -25,13 +38,19 @@ const MyQueriesPage = () => {
         }
     };
 
+    const handleLogout = () => {
+        localStorage.removeItem('nest_user');
+        window.location.href = '/';
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
             <Navbar
                 onHomeClick={() => window.location.href = '/'}
                 onSavedClick={() => window.location.href = '/wishlist'}
                 onSignInClick={() => { }}
-                currentUser={{ name: 'Demo User', email: 'demo@test.com', type: 'student', isVerified: true }}
+                onLogout={handleLogout}
+                currentUser={currentUser}
                 savedCount={0}
             />
 
@@ -77,7 +96,7 @@ const MyQueriesPage = () => {
                                     </div>
 
                                     {enq.status === 'REPLIED' && (
-                                        <div className="bg-brand-50 p-4 rounded-xl border border-brand-100 animate-fade-in">
+                                        <div className="bg-brand-50 p-4 rounded-xl border-brand-100 animate-fade-in">
                                             <p className="text-sm font-semibold text-brand-600 uppercase tracking-wider mb-2 text-[10px]">Landlord's Reply</p>
                                             <p className="text-slate-800 text-sm leading-relaxed">{enq.answer}</p>
                                         </div>

@@ -10,13 +10,31 @@ const AdminPage = () => {
     const [rooms, setRooms] = useState<Room[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingRoom, setEditingRoom] = useState<Partial<Room> | null>(null);
-    const [activeTab, setActiveTab] = useState<'listings' | 'enquiries'>('listings');
+    const [activeTab, setActiveTab] = useState<'listings' | 'enquiries' | 'requests' | 'successful'>('listings');
     const [enquiries, setEnquiries] = useState<any[]>([]);
+    const [bookings, setBookings] = useState<any[]>([]);
     const [submittingReply, setSubmittingReply] = useState<string | null>(null);
+    const [updatingBooking, setUpdatingBooking] = useState<string | null>(null);
+
+    const [currentUser, setCurrentUser] = useState<any>(null);
 
     useEffect(() => {
+        const savedUser = localStorage.getItem('nest_user');
+        if (savedUser) {
+            const user = JSON.parse(savedUser);
+            if (user.type !== 'admin') {
+                window.location.href = '/';
+                return;
+            }
+            setCurrentUser(user);
+        } else {
+            window.location.href = '/';
+            return;
+        }
+
         fetchRooms();
         fetchEnquiries();
+        fetchBookings();
     }, []);
 
     const fetchRooms = async () => {
@@ -39,6 +57,36 @@ const AdminPage = () => {
             setEnquiries(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Failed to fetch enquiries', error);
+        }
+    };
+
+    const fetchBookings = async () => {
+        try {
+            const res = await fetch('/api/admin/bookings');
+            const data = await res.json();
+            setBookings(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error('Failed to fetch bookings', error);
+        }
+    };
+
+    const handleUpdateBookingStatus = async (id: string, status: 'SUCCESSFUL' | 'CANCELLED') => {
+        setUpdatingBooking(id);
+        try {
+            const res = await fetch('/api/admin/bookings', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, status })
+            });
+            if (res.ok) {
+                fetchBookings();
+            } else {
+                alert('Failed to update booking');
+            }
+        } catch (err) {
+            console.error("Failed to update booking", err);
+        } finally {
+            setUpdatingBooking(null);
         }
     };
 
@@ -127,8 +175,13 @@ const AdminPage = () => {
             description: '',
             availableFrom: '2024-09-01'
         });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
+    const handleLogout = () => {
+        localStorage.removeItem('nest_user');
+        window.location.href = '/';
+    };
+
+    if (!currentUser) return null;
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
@@ -136,48 +189,67 @@ const AdminPage = () => {
                 onHomeClick={() => window.location.href = '/'}
                 onSavedClick={() => { }}
                 onSignInClick={() => { }}
-                currentUser={{ name: 'Admin', email: 'admin@test.com', type: 'student', isVerified: true }}
+                onLogout={handleLogout}
+                currentUser={currentUser}
                 savedCount={0}
             />
 
-            <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
-                <div className="flex justify-between items-center mb-8">
-                    <h1 className="text-3xl font-bold text-slate-900">Admin Dashboard</h1>
-                    <div className="flex gap-2">
-                        <a
-                            href="/api/admin/export-excel"
-                            target="_blank"
-                            className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition"
-                        >
-                            Export Excel
-                        </a>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+                <div className="flex justify-between items-center mb-10">
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">System Administration</h1>
+                        <p className="text-slate-500 mt-1">Manage platform listings, enquiries and bookings</p>
+                    </div>
+                    <div className="flex gap-3">
                         <button
-                            onClick={startNew}
-                            className="flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 transition"
+                            onClick={() => {
+                                setEditingRoom({
+                                    title: '',
+                                    description: '',
+                                    city: '',
+                                    pricePerWeek: 0,
+                                    type: 'En-suite' as any,
+                                    universityProximity: [],
+                                    amenities: [],
+                                    images: [],
+                                    availableFrom: 'Sept 2024'
+                                });
+                            }}
+                            className="bg-brand-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-brand-100 hover:bg-brand-700 transition flex items-center gap-2"
                         >
-                            <Plus size={18} /> Add New Room
+                            <Plus size={18} /> New Listing
                         </button>
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex gap-4 mb-8 border-b border-slate-200">
+                <div className="flex border-b border-slate-200 mb-8 space-x-8">
                     <button
+                        className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'listings' ? 'text-brand-600' : 'text-slate-400 hover:text-slate-600'}`}
                         onClick={() => setActiveTab('listings')}
-                        className={`pb-4 px-2 font-bold text-sm transition ${activeTab === 'listings' ? 'text-brand-600 border-b-2 border-brand-600' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                         Property Listings
+                        {activeTab === 'listings' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-600 rounded-full" />}
                     </button>
                     <button
+                        className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'enquiries' ? 'text-brand-600' : 'text-slate-400 hover:text-slate-600'}`}
                         onClick={() => setActiveTab('enquiries')}
-                        className={`pb-4 px-2 font-bold text-sm transition-all flex items-center gap-2 ${activeTab === 'enquiries' ? 'text-brand-600 border-b-2 border-brand-600' : 'text-slate-400 hover:text-slate-600'}`}
                     >
-                        User Enquiries
-                        {enquiries.filter(e => e.status === 'PENDING').length > 0 && (
-                            <span className="bg-rose-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
-                                {enquiries.filter(e => e.status === 'PENDING').length}
-                            </span>
-                        )}
+                        Tenant Enquiries
+                        {activeTab === 'enquiries' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-600 rounded-full" />}
+                    </button>
+                    <button
+                        className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'requests' ? 'text-brand-600' : 'text-slate-400 hover:text-slate-600'}`}
+                        onClick={() => setActiveTab('requests')}
+                    >
+                        Booking Requests
+                        {activeTab === 'requests' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-600 rounded-full" />}
+                    </button>
+                    <button
+                        className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'successful' ? 'text-brand-600' : 'text-slate-400 hover:text-slate-600'}`}
+                        onClick={() => setActiveTab('successful')}
+                    >
+                        Confirmed Bookings
+                        {activeTab === 'successful' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-600 rounded-full" />}
                     </button>
                 </div>
 
@@ -320,7 +392,7 @@ const AdminPage = () => {
                             </table>
                         </div>
                     </>
-                ) : (
+                ) : activeTab === 'enquiries' ? (
                     <div className="space-y-6">
                         {enquiries.length === 0 ? (
                             <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300">
@@ -367,6 +439,94 @@ const AdminPage = () => {
                                             </button>
                                         </div>
                                     )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                ) : activeTab === 'requests' ? (
+                    <div className="space-y-6">
+                        {bookings.filter(b => b.status === 'PENDING').length === 0 ? (
+                            <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300">
+                                <p className="text-slate-400">No pending booking requests.</p>
+                            </div>
+                        ) : (
+                            bookings.filter(b => b.status === 'PENDING').map((booking) => (
+                                <div key={booking._id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <h3 className="font-bold text-slate-900 text-lg">{booking.roomTitle}</h3>
+                                            <p className="text-sm text-slate-500">Landlord: <span className="font-semibold text-slate-700">{booking.landlordName}</span></p>
+                                        </div>
+                                        <div className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                                            PENDING
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4 text-sm">
+                                        <div>
+                                            <p className="text-xs text-slate-400 font-bold uppercase mb-1">Tenant Details</p>
+                                            <p className="font-medium text-slate-900">{booking.tenantName}</p>
+                                            <p className="text-slate-600">{booking.tenantEmail}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-400 font-bold uppercase mb-1">Booking Info</p>
+                                            <p className="font-medium text-slate-900">£{booking.pricePerWeek} / week</p>
+                                            <p className="text-slate-600">Requested on: {new Date(booking.createdAt).toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-end gap-3 mt-4">
+                                        <button
+                                            onClick={() => handleUpdateBookingStatus(booking._id, 'CANCELLED')}
+                                            disabled={updatingBooking === booking._id}
+                                            className="px-6 py-2 border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg text-sm font-medium transition disabled:opacity-50"
+                                        >
+                                            Decline Request
+                                        </button>
+                                        <button
+                                            onClick={() => handleUpdateBookingStatus(booking._id, 'SUCCESSFUL')}
+                                            disabled={updatingBooking === booking._id}
+                                            className="bg-brand-600 text-white px-8 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 transition disabled:opacity-50 shadow-md shadow-brand-100"
+                                        >
+                                            {updatingBooking === booking._id ? 'Updating...' : 'Confirm Booking'}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                ) : (
+                    <div className="space-y-6">
+                        {bookings.filter(b => b.status === 'SUCCESSFUL').length === 0 ? (
+                            <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300">
+                                <p className="text-slate-400">No successful bookings yet.</p>
+                            </div>
+                        ) : (
+                            bookings.filter(b => b.status === 'SUCCESSFUL').map((booking) => (
+                                <div key={booking._id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <h3 className="font-bold text-slate-900 text-lg">{booking.roomTitle}</h3>
+                                            <p className="text-sm text-slate-500">Landlord: <span className="font-semibold text-slate-700">{booking.landlordName}</span></p>
+                                        </div>
+                                        <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                                            SUCCESSFUL
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-100 mb-2 text-sm">
+                                        <div>
+                                            <p className="text-xs text-slate-400 font-bold uppercase mb-1">Tenant Details</p>
+                                            <p className="font-medium text-slate-900">{booking.tenantName}</p>
+                                            <p className="text-slate-600">{booking.tenantEmail}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-400 font-bold uppercase mb-1">Booking Info</p>
+                                            <p className="font-medium text-slate-900">£{booking.pricePerWeek} / week</p>
+                                            <p className="text-slate-600">Confirmed on: {new Date(booking.createdAt).toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             ))
                         )}

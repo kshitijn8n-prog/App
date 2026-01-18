@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Room } from '../../types';
+import { Room, User } from '../../types';
 import { Trash2, Edit, Plus, Save, X, Upload, Image as ImageIcon, AlertCircle, Loader2, MessageSquare } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 
@@ -9,45 +9,33 @@ const LandlordDashboard = () => {
     const [rooms, setRooms] = useState<Room[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingRoom, setEditingRoom] = useState<Partial<Room> | null>(null);
-    const [activeTab, setActiveTab] = useState<'listings' | 'queries'>('listings');
-    const [enquiries, setEnquiries] = useState<any[]>([]);
-    const [submittingReply, setSubmittingReply] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'listings'>('listings');
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+
     useEffect(() => {
-        fetchRooms();
-        fetchEnquiries();
-    }, []);
-
-    const fetchEnquiries = async () => {
-        try {
-            const res = await fetch('/api/admin/enquiries');
-            const data = await res.json();
-            setEnquiries(Array.isArray(data) ? data : []);
-        } catch (error) {
-            console.error('Failed to fetch enquiries', error);
+        const params = new URLSearchParams(window.location.search);
+        const tab = params.get('tab');
+        if (tab === 'listings') {
+            setActiveTab(tab as any);
         }
-    };
 
-    const handleReply = async (id: string, answer: string) => {
-        if (!answer.trim()) return;
-        setSubmittingReply(id);
-        try {
-            const res = await fetch(`/api/admin/enquiries/${id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ answer })
-            });
-            if (res.ok) {
-                fetchEnquiries();
+        const savedUser = localStorage.getItem('nest_user');
+        if (savedUser) {
+            const user = JSON.parse(savedUser);
+            if (user.type !== 'landlord') {
+                window.location.href = '/';
+                return;
             }
-        } catch (err) {
-            console.error("Failed to reply", err);
-        } finally {
-            setSubmittingReply(null);
+            setCurrentUser(user);
+        } else {
+            window.location.href = '/';
+            return;
         }
-    };
+        fetchRooms();
+    }, []);
 
     const fetchRooms = async () => {
         try {
@@ -167,7 +155,11 @@ const LandlordDashboard = () => {
                 onHomeClick={() => window.location.href = '/'}
                 onSavedClick={() => window.location.href = '/wishlist'}
                 onSignInClick={() => { }}
-                currentUser={{ name: 'Demo Landlord', email: 'landlord@test.com', type: 'landlord', isVerified: true }}
+                onLogout={() => {
+                    localStorage.removeItem('nest_user');
+                    window.location.href = '/';
+                }}
+                currentUser={currentUser}
                 savedCount={0}
             />
 
@@ -192,17 +184,6 @@ const LandlordDashboard = () => {
                         className={`pb-4 px-2 font-bold text-sm transition-all border-b-2 ${activeTab === 'listings' ? 'text-brand-600 border-brand-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}
                     >
                         Your Properties
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('queries')}
-                        className={`pb-4 px-2 font-bold text-sm transition-all border-b-2 flex items-center gap-2 ${activeTab === 'queries' ? 'text-brand-600 border-brand-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}
-                    >
-                        Student Queries
-                        {enquiries.filter(e => e.status === 'PENDING').length > 0 && (
-                            <span className="bg-rose-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
-                                {enquiries.filter(e => e.status === 'PENDING').length}
-                            </span>
-                        )}
                     </button>
                 </div>
 
@@ -337,154 +318,92 @@ const LandlordDashboard = () => {
                     </div>
                 )}
 
-                {activeTab === 'listings' ? (
-                    /* Property List */
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                            <h2 className="font-bold text-slate-800">Your Listings</h2>
-                            <span className="text-xs bg-slate-100 px-3 py-1 rounded-full font-bold text-slate-500">{rooms.length} Total</span>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold text-xs uppercase tracking-wider">
-                                    <tr>
-                                        <th className="p-6">Property</th>
-                                        <th className="p-6 text-center">Price</th>
-                                        <th className="p-6 text-center">Type</th>
-                                        <th className="p-6 text-center">Images</th>
-                                        <th className="p-6 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {rooms.map(room => (
-                                        <tr key={room.id} className="hover:bg-slate-50/50 transition group">
-                                            <td className="p-6">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100 shrink-0">
-                                                        <img src={room.images[0]} alt="" className="w-full h-full object-cover" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold text-slate-900 group-hover:text-brand-600 transition truncate max-w-[200px]">{room.title}</p>
-                                                        <p className="text-xs text-slate-500">{room.city}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="p-6 text-center">
-                                                <span className="font-bold text-slate-900">£{room.pricePerWeek}</span>
-                                                <span className="text-[10px] text-slate-400 block uppercase">per week</span>
-                                            </td>
-                                            <td className="p-6 text-center">
-                                                <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase">{room.type}</span>
-                                            </td>
-                                            <td className="p-6 text-center">
-                                                <div className="flex justify-center -space-x-2">
-                                                    {room.images.slice(0, 3).map((img, i) => (
-                                                        <div key={i} className="w-6 h-6 rounded-full border-2 border-white overflow-hidden bg-slate-200">
-                                                            <img src={img} alt="" className="w-full h-full object-cover" />
-                                                        </div>
-                                                    ))}
-                                                    {room.images.length > 3 && (
-                                                        <div className="w-6 h-6 rounded-full border-2 border-white bg-slate-800 text-white text-[8px] flex items-center justify-center font-bold">
-                                                            +{room.images.length - 3}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="p-6">
-                                                <div className="flex gap-2 justify-end">
-                                                    <button
-                                                        onClick={() => startEdit(room)}
-                                                        className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition"
-                                                        title="Edit"
-                                                    >
-                                                        <Edit size={18} />
-                                                    </button>
-                                                    <button
-                                                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 size={18} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {rooms.length === 0 && !loading && (
-                                        <tr>
-                                            <td colSpan={5} className="p-20 text-center">
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <ImageIcon size={48} className="text-slate-200 mb-2" />
-                                                    <p className="text-slate-400 font-medium">No properties listed yet.</p>
-                                                    <button onClick={startNew} className="text-brand-600 text-sm font-bold hover:underline">Start your first listing</button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                {/* Property List */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                        <h2 className="font-bold text-slate-800">Your Listings</h2>
+                        <span className="text-xs bg-slate-100 px-3 py-1 rounded-full font-bold text-slate-500">{rooms.length} Total</span>
                     </div>
-                ) : (
-                    <div className="space-y-6">
-                        {enquiries.length === 0 ? (
-                            <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
-                                <p className="text-slate-400">No student queries found yet.</p>
-                            </div>
-                        ) : (
-                            enquiries.map((enq) => (
-                                <div key={enq._id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
-                                    <div className="flex justify-between items-start mb-6">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold">
-                                                {enq.userName.charAt(0)}
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold text-xs uppercase tracking-wider">
+                                <tr>
+                                    <th className="p-6">Property</th>
+                                    <th className="p-6 text-center">Price</th>
+                                    <th className="p-6 text-center">Type</th>
+                                    <th className="p-6 text-center">Images</th>
+                                    <th className="p-6 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {rooms.map(room => (
+                                    <tr key={room.id} className="hover:bg-slate-50/50 transition group">
+                                        <td className="p-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100 shrink-0">
+                                                    <img src={room.images[0]} alt="" className="w-full h-full object-cover" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-slate-900 group-hover:text-brand-600 transition truncate max-w-[200px]">{room.title}</p>
+                                                    <p className="text-xs text-slate-500">{room.city}</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <h3 className="font-bold text-slate-900">{enq.roomTitle}</h3>
-                                                <p className="text-xs text-slate-500">From: <span className="text-slate-700 font-medium">{enq.userName}</span></p>
+                                        </td>
+                                        <td className="p-6 text-center">
+                                            <span className="font-bold text-slate-900">£{room.pricePerWeek}</span>
+                                            <span className="text-[10px] text-slate-400 block uppercase">per week</span>
+                                        </td>
+                                        <td className="p-6 text-center">
+                                            <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase">{room.type}</span>
+                                        </td>
+                                        <td className="p-6 text-center">
+                                            <div className="flex justify-center -space-x-2">
+                                                {room.images.slice(0, 3).map((img, i) => (
+                                                    <div key={i} className="w-6 h-6 rounded-full border-2 border-white overflow-hidden bg-slate-200">
+                                                        <img src={img} alt="" className="w-full h-full object-cover" />
+                                                    </div>
+                                                ))}
+                                                {room.images.length > 3 && (
+                                                    <div className="w-6 h-6 rounded-full border-2 border-white bg-slate-800 text-white text-[8px] flex items-center justify-center font-bold">
+                                                        +{room.images.length - 3}
+                                                    </div>
+                                                )}
                                             </div>
-                                        </div>
-                                        <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${enq.status === 'REPLIED' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                                            {enq.status}
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-6 relative">
-                                        <div className="absolute -top-2 left-4 px-2 bg-white text-[10px] font-bold text-slate-400 border border-slate-100 rounded tracking-wider uppercase">Question</div>
-                                        <p className="text-slate-800 text-sm italic">"{enq.question}"</p>
-                                    </div>
-
-                                    {enq.status === 'REPLIED' ? (
-                                        <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 relative">
-                                            <div className="absolute -top-2 left-4 px-2 bg-white text-[10px] font-bold text-emerald-500 border border-emerald-100 rounded tracking-wider uppercase">Your Answer</div>
-                                            <p className="text-slate-700 text-sm">"{enq.answer}"</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            <textarea
-                                                id={`reply-${enq._id}`}
-                                                className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 outline-none transition h-24"
-                                                placeholder="Type your answer to the student here..."
-                                            />
-                                            <div className="flex justify-end">
+                                        </td>
+                                        <td className="p-6">
+                                            <div className="flex gap-2 justify-end">
                                                 <button
-                                                    onClick={() => {
-                                                        const text = (document.getElementById(`reply-${enq._id}`) as HTMLTextAreaElement).value;
-                                                        handleReply(enq._id, text);
-                                                    }}
-                                                    disabled={submittingReply === enq._id}
-                                                    className="bg-brand-600 text-white px-8 py-2.5 rounded-xl text-sm font-bold hover:bg-brand-700 transition disabled:opacity-50 shadow-lg shadow-brand-100 flex items-center gap-2"
+                                                    onClick={() => startEdit(room)}
+                                                    className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition"
+                                                    title="Edit"
                                                 >
-                                                    {submittingReply === enq._id ? <Loader2 className="animate-spin" size={16} /> : <MessageSquare size={16} />}
-                                                    Send Answer
+                                                    <Edit size={18} />
+                                                </button>
+                                                <button
+                                                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 size={18} />
                                                 </button>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ))
-                        )}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {rooms.length === 0 && !loading && (
+                                    <tr>
+                                        <td colSpan={5} className="p-20 text-center">
+                                            <div className="flex flex-col items-center gap-2">
+                                                <ImageIcon size={48} className="text-slate-200 mb-2" />
+                                                <p className="text-slate-400 font-medium">No properties listed yet.</p>
+                                                <button onClick={startNew} className="text-brand-600 text-sm font-bold hover:underline">Start your first listing</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
-                )}
+                </div>
 
             </main>
         </div>
