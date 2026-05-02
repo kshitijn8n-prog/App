@@ -1,21 +1,20 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db';
-import Wishlist from '@/models/Wishlist';
-import Room from '@/models/Room'; // Ensure Room model is registered
+import dbConnect from '../../../lib/mongodb';
+import Wishlist from '../../../models/Wishlist';
+import Room from '../../../models/Room';
 
 const TEST_USER_ID = 'demo-user-id';
 
 export async function GET() {
     try {
         await dbConnect();
-        // Ensure Room is registered
-        const _ = Room;
-
-        const wishlist = await Wishlist.find({ userId: TEST_USER_ID }).populate('roomId');
+        // Ensure Room is registered for populate
+        const _room = Room;
+        const wishlist = await (Wishlist as any).find({ userId: TEST_USER_ID }).populate('roomId');
         return NextResponse.json(wishlist);
-    } catch (error) {
-        console.error('Error fetching wishlist:', error);
-        return NextResponse.json({ error: 'Failed to fetch wishlist' }, { status: 500 });
+    } catch (error: any) {
+        console.error('Wishlist GET Error:', error.message);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
 
@@ -28,21 +27,20 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Room ID is required' }, { status: 400 });
         }
 
-        // Check if already exists
-        const existing = await Wishlist.findOne({ userId: TEST_USER_ID, roomId });
+        const existing = await (Wishlist as any).findOne({ userId: TEST_USER_ID, roomId });
         if (existing) {
-            return NextResponse.json({ message: 'Already in wishlist' }, { status: 200 });
+            return NextResponse.json({ message: 'Already in wishlist' });
         }
 
-        const newItem = await Wishlist.create({
+        const newItem = await (Wishlist as any).create({
             userId: TEST_USER_ID,
             roomId,
         });
 
         return NextResponse.json(newItem, { status: 201 });
-    } catch (error) {
-        console.error('Error adding to wishlist:', error);
-        return NextResponse.json({ error: 'Failed to add to wishlist' }, { status: 500 });
+    } catch (error: any) {
+        console.error('Wishlist POST Error:', error.message);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
 
@@ -56,11 +54,11 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ error: 'Room ID is required' }, { status: 400 });
         }
 
-        await Wishlist.deleteOne({ userId: TEST_USER_ID, roomId });
+        await (Wishlist as any).deleteOne({ userId: TEST_USER_ID, roomId });
 
         return NextResponse.json({ message: 'Removed from wishlist' });
-    } catch (error) {
-        console.error('Error removing from wishlist:', error);
-        return NextResponse.json({ error: 'Failed to remove from wishlist' }, { status: 500 });
+    } catch (error: any) {
+        console.error('Wishlist DELETE Error:', error.message);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

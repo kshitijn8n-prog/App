@@ -71,7 +71,7 @@ const RoomDetails: React.FC<RoomDetailsProps> = ({ room, onClose, onBook, isFavo
           <img src={room.images[0]} alt={room.title} className="w-full h-full object-cover" />
 
           <div className="absolute top-4 right-4 flex gap-2 z-10">
-            {currentUser && currentUser.type === 'student' && (
+            {(!currentUser || currentUser.type === 'student') && (
               <button
                 onClick={(e) => onToggleFavorite(e, room.id)}
                 className="bg-white/90 p-2 rounded-full hover:bg-white text-slate-800 transition shadow-lg"

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db';
+import dbConnect from '@/lib/mongodb';
 import Enquiry from '@/models/Enquiry';
 
 export async function PATCH(
@@ -11,7 +11,7 @@ export async function PATCH(
         const { answer } = await request.json();
         const { id } = await params;
 
-        const enquiry = await Enquiry.findByIdAndUpdate(
+        const enquiry = await (Enquiry as any).findByIdAndUpdate(
             id,
             {
                 answer,

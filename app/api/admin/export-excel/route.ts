@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db';
+import dbConnect from '@/lib/mongodb';
 import Room from '@/models/Room';
 import * as XLSX from 'xlsx';
 
 export async function GET() {
     try {
         await dbConnect();
-        const rooms = await Room.find({}).lean();
+        const rooms = await (Room as any).find({}).lean();
 
         // Transform data for excel
         const data = rooms.map((room: any) => ({

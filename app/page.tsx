@@ -58,8 +58,11 @@ const App: React.FC = () => {
             const res = await fetch('/api/wishlist');
             const data = await res.json();
             if (Array.isArray(data)) {
-                // Map wishlist items to room IDs
-                setSavedRoomIds(data.map((item: any) => item.roomId.id || item.roomId._id));
+                // Map wishlist items to room IDs, with safety check for deleted rooms
+                setSavedRoomIds(data
+                    .filter((item: any) => item.roomId)
+                    .map((item: any) => item.roomId.id || item.roomId._id)
+                );
             }
         } catch (error) {
             console.error('Failed to fetch wishlist', error);
@@ -162,8 +165,11 @@ const App: React.FC = () => {
             }
 
             if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                console.error("Failed to update wishlist:", errorData);
+                alert(`Wishlist update failed: ${errorData.error || 'Unknown error'}`);
+
                 // Revert if failed
-                console.error("Failed to update wishlist");
                 if (isCurrentlySaved) {
                     setSavedRoomIds(prev => [...prev, roomId]);
                 } else {

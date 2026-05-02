@@ -1,5 +1,5 @@
 
-import dbConnect from './lib/db';
+import dbConnect from './lib/mongodb';
 import User from './models/User';
 
 async function check() {

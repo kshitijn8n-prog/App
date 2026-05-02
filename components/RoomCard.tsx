@@ -24,7 +24,7 @@ const RoomCard: React.FC<RoomCardProps> = ({ room, onClick, isFavorite, onToggle
         />
 
         {/* Favorite Button */}
-        {currentUser && currentUser.type === 'student' && (
+        {(!currentUser || currentUser.type === 'student') && (
           <button
             onClick={(e) => onToggleFavorite(e, room.id)}
             className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white transition-colors shadow-sm group/btn"

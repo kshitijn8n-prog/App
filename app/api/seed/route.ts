@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import dbConnect from '../../../lib/db';
+import dbConnect from '../../../lib/mongodb';
 import Room from '../../../models/Room';
 import User from '../../../models/User';
 import { MOCK_ROOMS } from '../../../constants'; // We need to move constants or adjust import
@@ -9,6 +9,9 @@ import { MOCK_ROOMS } from '../../../constants'; // We need to move constants or
 // Actually we can try importing. If fails, we'll inline. 
 // constants.ts only imports Room type.
 
+import Enquiry from '../../../models/Enquiry';
+import Wishlist from '../../../models/Wishlist';
+
 export async function POST() {
     try {
         await dbConnect();
@@ -16,10 +19,12 @@ export async function POST() {
         // Clear existing
         await Room.deleteMany({});
         await User.deleteMany({});
+        await (Enquiry as any).deleteMany({});
+        await (Wishlist as any).deleteMany({});
 
         // Seed Rooms
         // We need to drop 'id' from mock rooms as mongo generates _id
-        const roomsToInsert = MOCK_ROOMS.map(({ id, ...rest }) => rest);
+        const roomsToInsert = MOCK_ROOMS.map(({ id, ...rest }) => ({ ...rest, status: 'PUBLISHED' }));
         const rooms = await Room.insertMany(roomsToInsert as any);
 
         // Seed Users

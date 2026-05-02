@@ -331,6 +331,7 @@ const LandlordDashboard = () => {
                                     <th className="p-6">Property</th>
                                     <th className="p-6 text-center">Price</th>
                                     <th className="p-6 text-center">Type</th>
+                                    <th className="p-6 text-center">Status</th>
                                     <th className="p-6 text-center">Images</th>
                                     <th className="p-6 text-right">Actions</th>
                                 </tr>
@@ -355,6 +356,11 @@ const LandlordDashboard = () => {
                                         </td>
                                         <td className="p-6 text-center">
                                             <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase">{room.type}</span>
+                                        </td>
+                                        <td className="p-6 text-center">
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${room.status === 'PUBLISHED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                {room.status || 'PENDING'}
+                                            </span>
                                         </td>
                                         <td className="p-6 text-center">
                                             <div className="flex justify-center -space-x-2">

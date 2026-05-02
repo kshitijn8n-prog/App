@@ -1,5 +1,5 @@
 
-import dbConnect from './lib/db';
+import dbConnect from './lib/mongodb';
 import User from './models/User';
 
 async function createAdmin() {
@@ -21,7 +21,7 @@ async function createAdmin() {
         };
 
         // Find or update the admin user
-        const result = await User.findOneAndUpdate(
+        const result = await (User as any).findOneAndUpdate(
             { email: adminEmail },
             { $set: adminData },
             { upsert: true, new: true }

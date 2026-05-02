@@ -29,6 +29,7 @@ export interface Room {
   reviews: Review[];
   landlord: Landlord;
   availableFrom: string;
+  status: 'PENDING' | 'PUBLISHED';
 }
 
 export interface SearchFilters {

@@ -90,23 +90,25 @@ const WishlistPage = () => {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {wishlist.map(item => {
-                            // Map Room object (ensuring id is set correctly if it comes from _id)
-                            const room = item.roomId;
-                            // Ensure id exists for RoomCard (Mongoose populates _id usually)
-                            if (!room.id && room._id) room.id = room._id;
+                        {wishlist
+                            .filter(item => item.roomId)
+                            .map(item => {
+                                // Map Room object (ensuring id is set correctly if it comes from _id)
+                                const room = item.roomId;
+                                // Ensure id exists for RoomCard (Mongoose populates _id usually)
+                                if (!room.id && room._id) room.id = room._id;
 
-                            return (
-                                <RoomCard
-                                    key={room.id || item._id}
-                                    room={room}
-                                    onClick={(r) => window.location.href = `/?roomId=${r.id}`} // Simple nav or handle differently
-                                    isFavorite={true}
-                                    onToggleFavorite={handleToggleFavorite}
-                                    currentUser={currentUser}
-                                />
-                            );
-                        })}
+                                return (
+                                    <RoomCard
+                                        key={room.id || item._id}
+                                        room={room}
+                                        onClick={(r) => window.location.href = `/?roomId=${r.id}`} // Simple nav or handle differently
+                                        isFavorite={true}
+                                        onToggleFavorite={handleToggleFavorite}
+                                        currentUser={currentUser}
+                                    />
+                                );
+                            })}
                     </div>
                 )}
             </main>

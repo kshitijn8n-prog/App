@@ -37,6 +37,11 @@ const RoomSchema = new Schema<Room>({
     reviews: [ReviewSchema],
     landlord: LandlordSchema,
     availableFrom: String,
+    status: {
+        type: String,
+        enum: ['PENDING', 'PUBLISHED'],
+        default: 'PENDING'
+    },
 }, {
     toJSON: {
         virtuals: true,

@@ -70,6 +70,21 @@ const AdminPage = () => {
         }
     };
 
+    const handlePublishRoom = async (id: string) => {
+        try {
+            const res = await fetch(`/api/admin/rooms/${id}/publish`, {
+                method: 'PATCH'
+            });
+            if (res.ok) {
+                fetchRooms();
+            } else {
+                alert('Failed to publish room');
+            }
+        } catch (err) {
+            console.error("Failed to publish room", err);
+        }
+    };
+
     const handleUpdateBookingStatus = async (id: string, status: 'SUCCESSFUL' | 'CANCELLED') => {
         setUpdatingBooking(id);
         try {
@@ -351,6 +366,7 @@ const AdminPage = () => {
                                         <th className="p-4">City</th>
                                         <th className="p-4">Price/wk</th>
                                         <th className="p-4">Type</th>
+                                        <th className="p-4">Status</th>
                                         <th className="p-4 text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -363,7 +379,21 @@ const AdminPage = () => {
                                             <td className="p-4 text-slate-600">
                                                 <span className="bg-slate-100 px-2 py-1 rounded text-xs">{room.type}</span>
                                             </td>
+                                            <td className="p-4">
+                                                <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${room.status === 'PUBLISHED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                    {room.status || 'PENDING'}
+                                                </span>
+                                            </td>
                                             <td className="p-4 flex gap-2 justify-end">
+                                                {room.status !== 'PUBLISHED' && (
+                                                    <button
+                                                        onClick={() => handlePublishRoom(room.id)}
+                                                        className="p-2 text-emerald-600 hover:bg-emerald-50 rounded"
+                                                        title="Publish"
+                                                    >
+                                                        <Save size={18} />
+                                                    </button>
+                                                )}
                                                 <button
                                                     onClick={() => startEdit(room)}
                                                     className="p-2 text-brand-600 hover:bg-brand-50 rounded"

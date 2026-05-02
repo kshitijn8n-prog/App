@@ -1,7 +1,6 @@
-
 import { NextResponse } from 'next/server';
-import dbConnect from '../../../../lib/db';
-import Room from '../../../../models/Room';
+import dbConnect from '@/lib/mongodb';
+import Room from '@/models/Room';
 
 export async function PUT(
     request: Request,
@@ -9,9 +8,9 @@ export async function PUT(
 ) {
     try {
         await dbConnect();
-        const { id } = params;
+        const { id } = await params;
         const body = await request.json();
-        const room = await Room.findByIdAndUpdate(id, body, { new: true });
+        const room = await (Room as any).findByIdAndUpdate(id, body, { new: true });
         if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
         return NextResponse.json(room);
     } catch (error) {
@@ -25,8 +24,8 @@ export async function DELETE(
 ) {
     try {
         await dbConnect();
-        const { id } = params;
-        const room = await Room.findByIdAndDelete(id);
+        const { id } = await params;
+        const room = await (Room as any).findByIdAndDelete(id);
         if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
         return NextResponse.json({ message: 'Room deleted' });
     } catch (error) {
