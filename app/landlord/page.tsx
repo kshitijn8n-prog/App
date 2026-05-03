@@ -1,24 +1,30 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Room, User } from '../../types';
-import { Trash2, Edit, Plus, Save, X, Upload, Image as ImageIcon, AlertCircle, Loader2, MessageSquare } from 'lucide-react';
+import { Room, User, Booking } from '../../types';
+import { Trash2, Edit, Plus, Save, X, Upload, Image as ImageIcon, AlertCircle, Loader2, MessageSquare, CheckCircle2, XCircle } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 
 const LandlordDashboard = () => {
     const [rooms, setRooms] = useState<Room[]>([]);
+    const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
+    const [bookingsLoading, setBookingsLoading] = useState(false);
     const [editingRoom, setEditingRoom] = useState<Partial<Room> | null>(null);
-    const [activeTab, setActiveTab] = useState<'listings'>('listings');
+    const [activeTab, setActiveTab] = useState<'listings' | 'bookings'>('listings');
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [rejectingId, setRejectingId] = useState<string | null>(null);
+    const [rejectReason, setRejectReason] = useState('');
+    const [approvingId, setApprovingId] = useState<string | null>(null);
+    const [updatingRentalStatus, setUpdatingRentalStatus] = useState<string | null>(null);
 
     const [currentUser, setCurrentUser] = useState<User | null>(null);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const tab = params.get('tab');
-        if (tab === 'listings') {
+        if (tab === 'listings' || tab === 'bookings') {
             setActiveTab(tab as any);
         }
 
@@ -35,20 +41,105 @@ const LandlordDashboard = () => {
             return;
         }
         fetchRooms();
+        fetchBookings();
     }, []);
 
     const fetchRooms = async () => {
         try {
             setLoading(true);
-            const res = await fetch('/api/rooms');
+            const res = await fetch('/api/rooms?includePending=true');
             const data = await res.json();
-            // In a real app, we'd filter by landlord ID. 
-            // For this demo, we'll show all and pretend they belong to this landlord.
             setRooms(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Failed to fetch rooms', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchBookings = async () => {
+        try {
+            setBookingsLoading(true);
+            // For now, we'll fetch all bookings. In production, filter by landlord
+            const res = await fetch('/api/admin/bookings');
+            const data = await res.json();
+            // Filter bookings that are awaiting landlord response
+            const pendingBookings = Array.isArray(data) 
+                ? data.filter((b: Booking) => b.status === 'AWAITING_LANDLORD' || b.status === 'PENDING')
+                : [];
+            setBookings(pendingBookings);
+        } catch (error) {
+            console.error('Failed to fetch bookings', error);
+        } finally {
+            setBookingsLoading(false);
+        }
+    };
+
+    const handleApproveBooking = async (bookingId: string) => {
+        setApprovingId(bookingId);
+        try {
+            const res = await fetch(`/api/landlord/bookings/${bookingId}/approve`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (res.ok) {
+                alert('Booking approved! Admin will contact the student.');
+                fetchBookings();
+            } else {
+                alert('Failed to approve booking');
+            }
+        } catch (error) {
+            console.error('Failed to approve booking', error);
+            alert('Error approving booking');
+        } finally {
+            setApprovingId(null);
+        }
+    };
+
+    const handleRejectBooking = async (bookingId: string) => {
+        if (!rejectReason.trim()) {
+            alert('Please provide a reason for rejection');
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/landlord/bookings/${bookingId}/reject`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: rejectReason })
+            });
+            if (res.ok) {
+                alert('Booking rejected. Admin will notify the student.');
+                setRejectingId(null);
+                setRejectReason('');
+                fetchBookings();
+            } else {
+                alert('Failed to reject booking');
+            }
+        } catch (error) {
+            console.error('Failed to reject booking', error);
+            alert('Error rejecting booking');
+        }
+    };
+
+    const handleUpdateRentalStatus = async (roomId: string, newStatus: 'AVAILABLE' | 'RENTED') => {
+        setUpdatingRentalStatus(roomId);
+        try {
+            const res = await fetch(`/api/rooms/${roomId}/rental-status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rentalStatus: newStatus })
+            });
+            if (res.ok) {
+                fetchRooms();
+            } else {
+                alert('Failed to update rental status');
+            }
+        } catch (error) {
+            console.error('Failed to update rental status', error);
+            alert('Error updating rental status');
+        } finally {
+            setUpdatingRentalStatus(null);
         }
     };
 
@@ -120,6 +211,12 @@ const LandlordDashboard = () => {
             if (res.ok) {
                 setEditingRoom(null);
                 setImagePreviews([]);
+                const isNew = !editingRoom?.id;
+                if (isNew) {
+                    alert('✅ Listing created! Your property is now awaiting admin approval. You\'ll see it in the "Pending" status. Admin will review and publish it shortly.');
+                } else {
+                    alert('✅ Listing updated successfully!');
+                }
                 fetchRooms();
             } else {
                 alert('Failed to save property. Please check the network tab for details.');
@@ -184,6 +281,17 @@ const LandlordDashboard = () => {
                         className={`pb-4 px-2 font-bold text-sm transition-all border-b-2 ${activeTab === 'listings' ? 'text-brand-600 border-brand-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}
                     >
                         Your Properties
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('bookings')}
+                        className={`pb-4 px-2 font-bold text-sm transition-all border-b-2 relative ${activeTab === 'bookings' ? 'text-brand-600 border-brand-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}
+                    >
+                        Booking Requests
+                        {bookings.filter(b => b.status === 'AWAITING_LANDLORD' || b.status === 'PENDING').length > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                                {bookings.filter(b => b.status === 'AWAITING_LANDLORD' || b.status === 'PENDING').length}
+                            </span>
+                        )}
                     </button>
                 </div>
 
@@ -319,7 +427,21 @@ const LandlordDashboard = () => {
                 )}
 
                 {/* Property List */}
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                {activeTab === 'listings' && (
+                <div className="space-y-4">
+                    {/* Info Banner */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
+                        <div className="text-blue-600 flex-shrink-0">ℹ️</div>
+                        <div>
+                            <p className="text-sm font-semibold text-blue-900">How Listing Status Works</p>
+                            <p className="text-xs text-blue-700 mt-1">
+                                • <strong>Pending:</strong> Your listing is waiting for admin approval. Once approved, it will be visible to students.
+                                • <strong>Published:</strong> Your listing is live and students can view and book it.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div className="p-6 border-b border-slate-100 flex justify-between items-center">
                         <h2 className="font-bold text-slate-800">Your Listings</h2>
                         <span className="text-xs bg-slate-100 px-3 py-1 rounded-full font-bold text-slate-500">{rooms.length} Total</span>
@@ -332,6 +454,7 @@ const LandlordDashboard = () => {
                                     <th className="p-6 text-center">Price</th>
                                     <th className="p-6 text-center">Type</th>
                                     <th className="p-6 text-center">Status</th>
+                                    <th className="p-6 text-center">Rental Status</th>
                                     <th className="p-6 text-center">Images</th>
                                     <th className="p-6 text-right">Actions</th>
                                 </tr>
@@ -361,6 +484,32 @@ const LandlordDashboard = () => {
                                             <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${room.status === 'PUBLISHED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                                 {room.status || 'PENDING'}
                                             </span>
+                                        </td>
+                                        <td className="p-6 text-center">
+                                            <div className="flex gap-2 justify-center">
+                                                <button
+                                                    onClick={() => handleUpdateRentalStatus(room.id, 'AVAILABLE')}
+                                                    disabled={updatingRentalStatus === room.id}
+                                                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase transition ${
+                                                        room.rentalStatus === 'AVAILABLE'
+                                                            ? 'bg-emerald-100 text-emerald-700'
+                                                            : 'bg-slate-100 text-slate-600 hover:bg-emerald-50'
+                                                    } ${updatingRentalStatus === room.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                                >
+                                                    Available
+                                                </button>
+                                                <button
+                                                    onClick={() => handleUpdateRentalStatus(room.id, 'RENTED')}
+                                                    disabled={updatingRentalStatus === room.id}
+                                                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase transition ${
+                                                        room.rentalStatus === 'RENTED'
+                                                            ? 'bg-rose-100 text-rose-700'
+                                                            : 'bg-slate-100 text-slate-600 hover:bg-rose-50'
+                                                    } ${updatingRentalStatus === room.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                                >
+                                                    Rented
+                                                </button>
+                                            </div>
                                         </td>
                                         <td className="p-6 text-center">
                                             <div className="flex justify-center -space-x-2">
@@ -397,7 +546,7 @@ const LandlordDashboard = () => {
                                 ))}
                                 {rooms.length === 0 && !loading && (
                                     <tr>
-                                        <td colSpan={5} className="p-20 text-center">
+                                        <td colSpan={6} className="p-20 text-center">
                                             <div className="flex flex-col items-center gap-2">
                                                 <ImageIcon size={48} className="text-slate-200 mb-2" />
                                                 <p className="text-slate-400 font-medium">No properties listed yet.</p>
@@ -410,6 +559,115 @@ const LandlordDashboard = () => {
                         </table>
                     </div>
                 </div>
+                </div>
+                )}
+
+                {/* Bookings Tab */}
+                {activeTab === 'bookings' && (
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                        <h2 className="font-bold text-slate-800">Booking Requests</h2>
+                        <span className="text-xs bg-slate-100 px-3 py-1 rounded-full font-bold text-slate-500">{bookings.length} Pending</span>
+                    </div>
+
+                    {bookingsLoading ? (
+                        <div className="p-20 text-center flex items-center justify-center gap-2">
+                            <Loader2 className="animate-spin text-brand-600" size={24} />
+                            <span className="text-slate-500">Loading bookings...</span>
+                        </div>
+                    ) : bookings.length === 0 ? (
+                        <div className="p-20 text-center">
+                            <div className="flex flex-col items-center gap-2">
+                                <MessageSquare size={48} className="text-slate-200 mb-2" />
+                                <p className="text-slate-400 font-medium">No pending booking requests.</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-slate-100">
+                            {bookings.map(booking => (
+                                <div key={booking.id} className="p-6 hover:bg-slate-50/50 transition">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+                                        <div>
+                                            <p className="text-xs text-slate-500 uppercase font-bold mb-1">Room</p>
+                                            <p className="font-bold text-slate-900">{booking.roomTitle}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-500 uppercase font-bold mb-1">Student</p>
+                                            <p className="font-bold text-slate-900">{booking.tenantName}</p>
+                                            <p className="text-xs text-slate-500">{booking.tenantEmail}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-500 uppercase font-bold mb-1">Price</p>
+                                            <p className="font-bold text-slate-900">£{booking.pricePerWeek}/week</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mb-4">
+                                        <p className="text-xs text-slate-500 uppercase font-bold mb-2">Request Date</p>
+                                        <p className="text-sm text-slate-600">
+                                            {new Date(booking.createdAt).toLocaleDateString()}
+                                        </p>
+                                    </div>
+
+                                    {rejectingId === booking.id ? (
+                                        <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 mb-4">
+                                            <label className="block text-xs text-slate-700 uppercase font-bold mb-2">Reason for Rejection</label>
+                                            <textarea
+                                                className="w-full p-3 border border-rose-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none"
+                                                placeholder="Tell us why you're rejecting this booking..."
+                                                value={rejectReason}
+                                                onChange={(e) => setRejectReason(e.target.value)}
+                                                rows={3}
+                                            />
+                                            <div className="flex gap-2 mt-3">
+                                                <button
+                                                    onClick={() => handleRejectBooking(booking.id!)}
+                                                    className="flex-1 flex items-center justify-center gap-2 bg-rose-600 text-white px-4 py-2 rounded-lg hover:bg-rose-700 transition font-bold"
+                                                >
+                                                    <XCircle size={16} /> Confirm Rejection
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setRejectingId(null);
+                                                        setRejectReason('');
+                                                    }}
+                                                    className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition font-bold"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={() => handleApproveBooking(booking.id!)}
+                                                disabled={approvingId === booking.id}
+                                                className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition font-bold"
+                                            >
+                                                {approvingId === booking.id ? (
+                                                    <>
+                                                        <Loader2 size={16} className="animate-spin" /> Approving...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <CheckCircle2 size={16} /> Approve
+                                                    </>
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={() => setRejectingId(booking.id!)}
+                                                className="flex-1 flex items-center justify-center gap-2 bg-rose-600 text-white px-6 py-2 rounded-lg hover:bg-rose-700 transition font-bold"
+                                            >
+                                                <XCircle size={16} /> Reject
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                )}
 
             </main>
         </div>

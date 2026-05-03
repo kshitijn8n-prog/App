@@ -28,6 +28,8 @@ export async function POST(request: Request) {
             licenseNumber: user.licenseNumber
         });
     } catch (error) {
-        return NextResponse.json({ error: 'Login failed' }, { status: 500 });
+        console.error('Login error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Login failed';
+        return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
 }
