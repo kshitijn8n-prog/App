@@ -9,13 +9,22 @@ const BookingSchema = new Schema<Booking>({
     roomTitle: { type: String, required: true },
     tenantName: { type: String, required: true },
     tenantEmail: { type: String, required: true },
+    landlordId: { type: String, required: true },
     landlordName: { type: String, required: true },
+    landlordEmail: { type: String, required: true },
     pricePerWeek: { type: Number, required: true },
     status: {
         type: String,
-        enum: ['PENDING', 'SUCCESSFUL', 'CANCELLED'],
+        enum: ['PENDING', 'AWAITING_LANDLORD', 'LANDLORD_APPROVED', 'ADMIN_CONFIRMED', 'SUCCESSFUL', 'LANDLORD_REJECTED', 'CANCELLED'],
         default: 'PENDING'
     },
+    landlordResponse: {
+        type: String,
+        enum: ['PENDING', 'APPROVED', 'REJECTED'],
+        default: 'PENDING'
+    },
+    landlordRejectReason: String,
+    landlordResponseDate: Date,
     createdAt: {
         type: Date,
         default: Date.now

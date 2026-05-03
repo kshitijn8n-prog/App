@@ -10,9 +10,10 @@ const AdminPage = () => {
     const [rooms, setRooms] = useState<Room[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingRoom, setEditingRoom] = useState<Partial<Room> | null>(null);
-    const [activeTab, setActiveTab] = useState<'listings' | 'enquiries' | 'requests' | 'successful'>('listings');
+    const [activeTab, setActiveTab] = useState<'landlords' | 'pending' | 'listings' | 'enquiries' | 'requests' | 'successful'>('landlords');
     const [enquiries, setEnquiries] = useState<any[]>([]);
     const [bookings, setBookings] = useState<any[]>([]);
+    const [landlords, setLandlords] = useState<any[]>([]);
     const [submittingReply, setSubmittingReply] = useState<string | null>(null);
     const [updatingBooking, setUpdatingBooking] = useState<string | null>(null);
 
@@ -35,12 +36,13 @@ const AdminPage = () => {
         fetchRooms();
         fetchEnquiries();
         fetchBookings();
+        fetchLandlords();
     }, []);
 
     const fetchRooms = async () => {
         try {
             setLoading(true);
-            const res = await fetch('/api/rooms');
+            const res = await fetch('/api/rooms?includePending=true');
             const data = await res.json();
             setRooms(Array.isArray(data) ? data : []);
         } catch (error) {
@@ -70,6 +72,16 @@ const AdminPage = () => {
         }
     };
 
+    const fetchLandlords = async () => {
+        try {
+            const res = await fetch('/api/admin/landlords');
+            const data = await res.json();
+            setLandlords(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error('Failed to fetch landlords', error);
+        }
+    };
+
     const handlePublishRoom = async (id: string) => {
         try {
             const res = await fetch(`/api/admin/rooms/${id}/publish`, {
@@ -85,16 +97,17 @@ const AdminPage = () => {
         }
     };
 
-    const handleUpdateBookingStatus = async (id: string, status: 'SUCCESSFUL' | 'CANCELLED') => {
+    const handleUpdateBookingStatus = async (id: string, action: 'SEND_TO_LANDLORD' | 'CONFIRM' | 'CANCEL') => {
         setUpdatingBooking(id);
         try {
             const res = await fetch('/api/admin/bookings', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, status })
+                body: JSON.stringify({ id, action })
             });
             if (res.ok) {
                 fetchBookings();
+                alert(`Booking ${action.toLowerCase()} successfully`);
             } else {
                 alert('Failed to update booking');
             }
@@ -215,7 +228,7 @@ const AdminPage = () => {
                         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">System Administration</h1>
                         <p className="text-slate-500 mt-1">Manage platform listings, enquiries and bookings</p>
                     </div>
-                    <div className="flex gap-3">
+                    {/* <div className="flex gap-3">
                         <button
                             onClick={() => {
                                 setEditingRoom({
@@ -234,10 +247,17 @@ const AdminPage = () => {
                         >
                             <Plus size={18} /> New Listing
                         </button>
-                    </div>
+                    </div> */}
                 </div>
 
                 <div className="flex border-b border-slate-200 mb-8 space-x-8">
+                    <button
+                        className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'pending' ? 'text-brand-600' : 'text-slate-400 hover:text-slate-600'}`}
+                        onClick={() => setActiveTab('pending')}
+                    >
+                        🔔 Pending Approval
+                        {activeTab === 'pending' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-600 rounded-full" />}
+                    </button>
                     <button
                         className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'listings' ? 'text-brand-600' : 'text-slate-400 hover:text-slate-600'}`}
                         onClick={() => setActiveTab('listings')}
@@ -268,7 +288,49 @@ const AdminPage = () => {
                     </button>
                 </div>
 
-                {activeTab === 'listings' ? (
+                {activeTab === 'pending' ? (
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <table className="w-full text-left">
+                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-medium text-sm">
+                                <tr>
+                                    <th className="p-4">Title</th>
+                                    <th className="p-4">City</th>
+                                    <th className="p-4">Price/wk</th>
+                                    <th className="p-4">Type</th>
+                                    <th className="p-4">Description</th>
+                                    <th className="p-4 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rooms.filter(r => r.status === 'PENDING').length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="p-8 text-center text-slate-500">
+                                            ✅ No pending listings - all properties are published!
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    rooms.filter(r => r.status === 'PENDING').map(room => (
+                                        <tr key={room.id} className="border-b border-slate-100 hover:bg-slate-50 transition">
+                                            <td className="p-4 font-medium text-slate-900">{room.title}</td>
+                                            <td className="p-4 text-slate-600">{room.city}</td>
+                                            <td className="p-4 text-slate-600">£{room.pricePerWeek}/week</td>
+                                            <td className="p-4 text-slate-600">{room.type}</td>
+                                            <td className="p-4 text-slate-600 truncate max-w-xs">{room.description}</td>
+                                            <td className="p-4 text-right">
+                                                <button
+                                                    onClick={() => handlePublishRoom(room.id as any)}
+                                                    className="bg-green-600 text-white px-4 py-2 rounded font-medium hover:bg-green-700 transition"
+                                                >
+                                                    ✓ Approve
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : activeTab === 'listings' ? (
                     <>
                         {/* Edit Form */}
                         {editingRoom && (
@@ -475,64 +537,133 @@ const AdminPage = () => {
                     </div>
                 ) : activeTab === 'requests' ? (
                     <div className="space-y-6">
-                        {bookings.filter(b => b.status === 'PENDING').length === 0 ? (
+                        {bookings.filter(b => 
+                            b.status === 'PENDING' || 
+                            b.status === 'AWAITING_LANDLORD' || 
+                            b.status === 'LANDLORD_APPROVED' || 
+                            b.status === 'LANDLORD_REJECTED'
+                        ).length === 0 ? (
                             <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300">
                                 <p className="text-slate-400">No pending booking requests.</p>
                             </div>
                         ) : (
-                            bookings.filter(b => b.status === 'PENDING').map((booking) => (
-                                <div key={booking._id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <h3 className="font-bold text-slate-900 text-lg">{booking.roomTitle}</h3>
-                                            <p className="text-sm text-slate-500">Landlord: <span className="font-semibold text-slate-700">{booking.landlordName}</span></p>
-                                        </div>
-                                        <div className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                                            PENDING
-                                        </div>
-                                    </div>
+                            bookings
+                                .filter(b => 
+                                    b.status === 'PENDING' || 
+                                    b.status === 'AWAITING_LANDLORD' || 
+                                    b.status === 'LANDLORD_APPROVED' || 
+                                    b.status === 'LANDLORD_REJECTED'
+                                )
+                                .map((booking) => (
+                                    <div key={booking._id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
+                                        {/* Status Indicator */}
+                                        <div className={`absolute top-0 left-0 w-1.5 h-full ${
+                                            booking.status === 'LANDLORD_APPROVED' ? 'bg-emerald-500' :
+                                            booking.status === 'LANDLORD_REJECTED' ? 'bg-rose-500' :
+                                            booking.status === 'AWAITING_LANDLORD' ? 'bg-blue-500' :
+                                            'bg-amber-500'
+                                        }`}></div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4 text-sm">
-                                        <div>
-                                            <p className="text-xs text-slate-400 font-bold uppercase mb-1">Tenant Details</p>
-                                            <p className="font-medium text-slate-900">{booking.tenantName}</p>
-                                            <p className="text-slate-600">{booking.tenantEmail}</p>
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <h3 className="font-bold text-slate-900 text-lg">{booking.roomTitle}</h3>
+                                                <p className="text-sm text-slate-500">Landlord: <span className="font-semibold text-slate-700">{booking.landlordName}</span></p>
+                                            </div>
+                                            <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                                                booking.status === 'LANDLORD_APPROVED' ? 'bg-emerald-50 text-emerald-600' :
+                                                booking.status === 'LANDLORD_REJECTED' ? 'bg-rose-50 text-rose-600' :
+                                                booking.status === 'AWAITING_LANDLORD' ? 'bg-blue-50 text-blue-600' :
+                                                'bg-amber-50 text-amber-600'
+                                            }`}>
+                                                {booking.status}
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-xs text-slate-400 font-bold uppercase mb-1">Booking Info</p>
-                                            <p className="font-medium text-slate-900">£{booking.pricePerWeek} / week</p>
-                                            <p className="text-slate-600">Requested on: {new Date(booking.createdAt).toLocaleDateString()}</p>
-                                        </div>
-                                    </div>
 
-                                    <div className="flex justify-end gap-3 mt-4">
-                                        <button
-                                            onClick={() => handleUpdateBookingStatus(booking._id, 'CANCELLED')}
-                                            disabled={updatingBooking === booking._id}
-                                            className="px-6 py-2 border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg text-sm font-medium transition disabled:opacity-50"
-                                        >
-                                            Decline Request
-                                        </button>
-                                        <button
-                                            onClick={() => handleUpdateBookingStatus(booking._id, 'SUCCESSFUL')}
-                                            disabled={updatingBooking === booking._id}
-                                            className="bg-brand-600 text-white px-8 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 transition disabled:opacity-50 shadow-md shadow-brand-100"
-                                        >
-                                            {updatingBooking === booking._id ? 'Updating...' : 'Confirm Booking'}
-                                        </button>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4 text-sm">
+                                            <div>
+                                                <p className="text-xs text-slate-400 font-bold uppercase mb-1">Tenant Details</p>
+                                                <p className="font-medium text-slate-900">{booking.tenantName}</p>
+                                                <p className="text-slate-600">{booking.tenantEmail}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-slate-400 font-bold uppercase mb-1">Booking Info</p>
+                                                <p className="font-medium text-slate-900">£{booking.pricePerWeek} / week</p>
+                                                <p className="text-slate-600">Requested: {new Date(booking.createdAt).toLocaleDateString()}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Landlord Rejection Reason */}
+                                        {booking.status === 'LANDLORD_REJECTED' && booking.landlordRejectReason && (
+                                            <div className="bg-rose-50 border border-rose-200 p-4 rounded-lg mb-4">
+                                                <p className="text-xs font-bold text-rose-600 mb-1 uppercase">Landlord's Reason for Rejection:</p>
+                                                <p className="text-slate-700 text-sm italic">"{booking.landlordRejectReason}"</p>
+                                            </div>
+                                        )}
+
+                                        {/* Action Buttons Based on Status */}
+                                        <div className="flex justify-end gap-3 mt-4">
+                                            {booking.status === 'PENDING' && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleUpdateBookingStatus(booking._id, 'CANCEL')}
+                                                        disabled={updatingBooking === booking._id}
+                                                        className="px-6 py-2 border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg text-sm font-medium transition disabled:opacity-50"
+                                                    >
+                                                        Decline Request
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleUpdateBookingStatus(booking._id, 'SEND_TO_LANDLORD')}
+                                                        disabled={updatingBooking === booking._id}
+                                                        className="bg-blue-600 text-white px-8 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition disabled:opacity-50 shadow-md shadow-blue-100"
+                                                    >
+                                                        {updatingBooking === booking._id ? 'Sending...' : 'Send to Landlord'}
+                                                    </button>
+                                                </>
+                                            )}
+
+                                            {booking.status === 'AWAITING_LANDLORD' && (
+                                                <div className="text-center py-3 px-6 bg-blue-50 border border-blue-200 rounded-lg w-full">
+                                                    <p className="text-sm text-blue-600 font-semibold">⏳ Waiting for landlord response...</p>
+                                                </div>
+                                            )}
+
+                                            {booking.status === 'LANDLORD_APPROVED' && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleUpdateBookingStatus(booking._id, 'CANCEL')}
+                                                        disabled={updatingBooking === booking._id}
+                                                        className="px-6 py-2 border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg text-sm font-medium transition disabled:opacity-50"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleUpdateBookingStatus(booking._id, 'CONFIRM')}
+                                                        disabled={updatingBooking === booking._id}
+                                                        className="bg-emerald-600 text-white px-8 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 transition disabled:opacity-50 shadow-md shadow-emerald-100"
+                                                    >
+                                                        {updatingBooking === booking._id ? 'Confirming...' : 'Confirm Booking'}
+                                                    </button>
+                                                </>
+                                            )}
+
+                                            {booking.status === 'LANDLORD_REJECTED' && (
+                                                <div className="text-center py-3 px-6 bg-rose-50 border border-rose-200 rounded-lg w-full">
+                                                    <p className="text-sm text-rose-600 font-semibold">❌ Landlord rejected this booking</p>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            ))
+                                ))
                         )}
                     </div>
                 ) : (
                     <div className="space-y-6">
-                        {bookings.filter(b => b.status === 'SUCCESSFUL').length === 0 ? (
+                        {bookings.filter(b => b.status === 'SUCCESSFUL' || b.status === 'ADMIN_CONFIRMED').length === 0 ? (
                             <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300">
-                                <p className="text-slate-400">No successful bookings yet.</p>
+                                <p className="text-slate-400">No confirmed bookings yet.</p>
                             </div>
                         ) : (
-                            bookings.filter(b => b.status === 'SUCCESSFUL').map((booking) => (
+                            bookings.filter(b => b.status === 'SUCCESSFUL' || b.status === 'ADMIN_CONFIRMED').map((booking) => (
                                 <div key={booking._id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
                                     <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
                                     <div className="flex justify-between items-start mb-4">
@@ -541,7 +672,7 @@ const AdminPage = () => {
                                             <p className="text-sm text-slate-500">Landlord: <span className="font-semibold text-slate-700">{booking.landlordName}</span></p>
                                         </div>
                                         <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                                            SUCCESSFUL
+                                            CONFIRMED
                                         </div>
                                     </div>
 
@@ -554,7 +685,7 @@ const AdminPage = () => {
                                         <div>
                                             <p className="text-xs text-slate-400 font-bold uppercase mb-1">Booking Info</p>
                                             <p className="font-medium text-slate-900">£{booking.pricePerWeek} / week</p>
-                                            <p className="text-slate-600">Confirmed on: {new Date(booking.createdAt).toLocaleDateString()}</p>
+                                            <p className="text-slate-600">Confirmed: {new Date(booking.createdAt).toLocaleDateString()}</p>
                                         </div>
                                     </div>
                                 </div>

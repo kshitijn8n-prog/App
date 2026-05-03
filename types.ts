@@ -30,6 +30,7 @@ export interface Room {
   landlord: Landlord;
   availableFrom: string;
   status: 'PENDING' | 'PUBLISHED';
+  rentalStatus?: 'AVAILABLE' | 'RENTED';
 }
 
 export interface SearchFilters {
@@ -60,8 +61,13 @@ export interface Booking {
   roomTitle: string;
   tenantName: string;
   tenantEmail: string;
+  landlordId: string;
   landlordName: string;
+  landlordEmail: string;
   pricePerWeek: number;
-  status: 'PENDING' | 'SUCCESSFUL' | 'CANCELLED';
+  status: 'PENDING' | 'AWAITING_LANDLORD' | 'LANDLORD_APPROVED' | 'ADMIN_CONFIRMED' | 'SUCCESSFUL' | 'LANDLORD_REJECTED' | 'CANCELLED';
+  landlordResponse?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  landlordRejectReason?: string;
+  landlordResponseDate?: Date;
   createdAt: Date;
 }
