@@ -36,12 +36,12 @@ const LandlordDashboard = () => {
                 return;
             }
             setCurrentUser(user);
+            fetchRooms();
+            fetchBookings(user);
         } else {
             window.location.href = '/';
             return;
         }
-        fetchRooms();
-        fetchBookings();
     }, []);
 
     const fetchRooms = async () => {
@@ -57,15 +57,13 @@ const LandlordDashboard = () => {
         }
     };
 
-    const fetchBookings = async () => {
+    const fetchBookings = async (_user?: User | null) => {
         try {
             setBookingsLoading(true);
-            // For now, we'll fetch all bookings. In production, filter by landlord
             const res = await fetch('/api/admin/bookings');
             const data = await res.json();
-            // Filter bookings that are awaiting landlord response
-            const pendingBookings = Array.isArray(data) 
-                ? data.filter((b: Booking) => b.status === 'AWAITING_LANDLORD' || b.status === 'PENDING')
+            const pendingBookings = Array.isArray(data)
+                ? data.filter((b: Booking) => b.status === 'AWAITING_LANDLORD')
                 : [];
             setBookings(pendingBookings);
         } catch (error) {
@@ -566,8 +564,11 @@ const LandlordDashboard = () => {
                 {activeTab === 'bookings' && (
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                        <h2 className="font-bold text-slate-800">Booking Requests</h2>
-                        <span className="text-xs bg-slate-100 px-3 py-1 rounded-full font-bold text-slate-500">{bookings.length} Pending</span>
+                        <div>
+                            <h2 className="font-bold text-slate-800">Booking Requests</h2>
+                            <p className="text-xs text-blue-600 mt-0.5">These requests have been reviewed and forwarded to you by admin</p>
+                        </div>
+                        <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold">{bookings.length} Awaiting Your Review</span>
                     </div>
 
                     {bookingsLoading ? (
@@ -586,6 +587,10 @@ const LandlordDashboard = () => {
                         <div className="divide-y divide-slate-100">
                             {bookings.map(booking => (
                                 <div key={booking.id} className="p-6 hover:bg-slate-50/50 transition">
+                                    <div className="flex items-center gap-2 mb-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+                                        <span className="text-blue-500 text-sm">📋</span>
+                                        <p className="text-xs text-blue-700 font-semibold">Admin has forwarded this booking request for your review</p>
+                                    </div>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
                                         <div>
                                             <p className="text-xs text-slate-500 uppercase font-bold mb-1">Room</p>

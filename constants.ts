@@ -19,6 +19,7 @@ export const MOCK_ROOMS: Room[] = [
     landlord: {
       id: 'l1',
       name: 'Sarah Jenkins',
+      email: 'landlord@test.com',
       verified: true,
       joinedDate: '2021',
       responseRate: 98
@@ -46,6 +47,7 @@ export const MOCK_ROOMS: Room[] = [
     landlord: {
       id: 'l2',
       name: 'MCR Student Living',
+      email: 'landlord@test.com',
       verified: true,
       joinedDate: '2019',
       responseRate: 90
@@ -73,6 +75,7 @@ export const MOCK_ROOMS: Room[] = [
     landlord: {
       id: 'l3',
       name: 'Prestige Stays',
+      email: 'landlord@test.com',
       verified: true,
       joinedDate: '2022',
       responseRate: 100
@@ -98,6 +101,7 @@ export const MOCK_ROOMS: Room[] = [
     landlord: {
       id: 'l4',
       name: 'Davide C.',
+      email: 'landlord@test.com',
       verified: false,
       joinedDate: '2023',
       responseRate: 85
@@ -123,6 +127,7 @@ export const MOCK_ROOMS: Room[] = [
     landlord: {
       id: 'l5',
       name: 'Highland Properties',
+      email: 'landlord@test.com',
       verified: true,
       joinedDate: '2020',
       responseRate: 95
@@ -146,6 +151,7 @@ export const MOCK_ROOMS: Room[] = [
     landlord: {
       id: 'l6',
       name: 'Bristol Student Homes',
+      email: 'landlord@test.com',
       verified: true,
       joinedDate: '2018',
       responseRate: 92

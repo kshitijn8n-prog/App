@@ -10,6 +10,7 @@ export interface Review {
 export interface Landlord {
   id: string;
   name: string;
+  email?: string;
   verified: boolean;
   joinedDate: string;
   responseRate: number; // percentage

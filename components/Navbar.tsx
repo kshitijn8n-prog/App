@@ -1,4 +1,4 @@
-import { Home, UserCircle, Heart, CheckCircle2, ShieldCheck, MessageSquare, Building2, LogOut } from 'lucide-react';
+import { Home, UserCircle, Heart, CheckCircle2, ShieldCheck, MessageSquare, Building2, LogOut, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import { User } from '../types';
 
@@ -50,6 +50,10 @@ const Navbar: React.FC<NavbarProps> = ({
                 <Link href="/my-queries" className="flex items-center text-slate-600 hover:text-brand-600 transition group">
                   <MessageSquare className="h-6 w-6 group-hover:scale-110 transition-transform" />
                   <span className="hidden sm:inline ml-2 font-medium text-sm">Queries</span>
+                </Link>
+                <Link href="/my-bookings" className="flex items-center text-slate-600 hover:text-brand-600 transition group">
+                  <CalendarDays className="h-6 w-6 group-hover:scale-110 transition-transform" />
+                  <span className="hidden sm:inline ml-2 font-medium text-sm">My Bookings</span>
                 </Link>
               </>
             )}

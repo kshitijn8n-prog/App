@@ -15,6 +15,7 @@ const ReviewSchema = new Schema({
 
 const LandlordSchema = new Schema({
     name: String,
+    email: String,
     verified: Boolean,
     joinedDate: String,
     responseRate: Number,

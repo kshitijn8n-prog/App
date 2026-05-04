@@ -4,13 +4,21 @@ import Booking from '@/models/Booking';
 
 export async function PATCH(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         await dbConnect();
-        const bookingId = params.id;
+        const { id: bookingId } = await params;
         const body = await request.json();
         const { reason } = body;
+
+        const existing = await Booking.findById(bookingId);
+        if (!existing) {
+            return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+        }
+        if (existing.status !== 'AWAITING_LANDLORD') {
+            return NextResponse.json({ error: 'Booking cannot be rejected at this stage' }, { status: 400 });
+        }
 
         const booking = await Booking.findByIdAndUpdate(
             bookingId,
