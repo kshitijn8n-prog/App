@@ -555,7 +555,7 @@ const AdminPage = () => {
                                     b.status === 'LANDLORD_REJECTED'
                                 )
                                 .map((booking) => (
-                                    <div key={booking._id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
+                                    <div key={booking._id || booking.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
                                         {/* Status Indicator */}
                                         <div className={`absolute top-0 left-0 w-1.5 h-full ${
                                             booking.status === 'LANDLORD_APPROVED' ? 'bg-emerald-500' :
@@ -605,18 +605,18 @@ const AdminPage = () => {
                                             {booking.status === 'PENDING' && (
                                                 <>
                                                     <button
-                                                        onClick={() => handleUpdateBookingStatus(booking._id, 'CANCEL')}
-                                                        disabled={updatingBooking === booking._id}
+                                                        onClick={() => handleUpdateBookingStatus(booking._id || booking.id, 'CANCEL')}
+                                                        disabled={updatingBooking === (booking._id || booking.id)}
                                                         className="px-6 py-2 border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg text-sm font-medium transition disabled:opacity-50"
                                                     >
                                                         Decline Request
                                                     </button>
                                                     <button
-                                                        onClick={() => handleUpdateBookingStatus(booking._id, 'SEND_TO_LANDLORD')}
-                                                        disabled={updatingBooking === booking._id}
+                                                        onClick={() => handleUpdateBookingStatus(booking._id || booking.id, 'SEND_TO_LANDLORD')}
+                                                        disabled={updatingBooking === (booking._id || booking.id)}
                                                         className="bg-blue-600 text-white px-8 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition disabled:opacity-50 shadow-md shadow-blue-100"
                                                     >
-                                                        {updatingBooking === booking._id ? 'Sending...' : 'Send to Landlord'}
+                                                        {updatingBooking === (booking._id || booking.id) ? 'Sending...' : 'Send to Landlord'}
                                                     </button>
                                                 </>
                                             )}
@@ -630,18 +630,18 @@ const AdminPage = () => {
                                             {booking.status === 'LANDLORD_APPROVED' && (
                                                 <>
                                                     <button
-                                                        onClick={() => handleUpdateBookingStatus(booking._id, 'CANCEL')}
-                                                        disabled={updatingBooking === booking._id}
+                                                        onClick={() => handleUpdateBookingStatus(booking._id || booking.id, 'CANCEL')}
+                                                        disabled={updatingBooking === (booking._id || booking.id)}
                                                         className="px-6 py-2 border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg text-sm font-medium transition disabled:opacity-50"
                                                     >
                                                         Cancel
                                                     </button>
                                                     <button
-                                                        onClick={() => handleUpdateBookingStatus(booking._id, 'CONFIRM')}
-                                                        disabled={updatingBooking === booking._id}
+                                                        onClick={() => handleUpdateBookingStatus(booking._id || booking.id, 'CONFIRM')}
+                                                        disabled={updatingBooking === (booking._id || booking.id)}
                                                         className="bg-emerald-600 text-white px-8 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 transition disabled:opacity-50 shadow-md shadow-emerald-100"
                                                     >
-                                                        {updatingBooking === booking._id ? 'Confirming...' : 'Confirm Booking'}
+                                                        {updatingBooking === (booking._id || booking.id) ? 'Confirming...' : 'Confirm Booking'}
                                                     </button>
                                                 </>
                                             )}
@@ -664,7 +664,7 @@ const AdminPage = () => {
                             </div>
                         ) : (
                             bookings.filter(b => b.status === 'SUCCESSFUL' || b.status === 'ADMIN_CONFIRMED').map((booking) => (
-                                <div key={booking._id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
+                                <div key={booking._id || booking.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
                                     <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
                                     <div className="flex justify-between items-start mb-4">
                                         <div>

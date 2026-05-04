@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, SlidersHorizontal, Map as MapIcon, Loader2, CheckCircle2, Heart } from 'lucide-react';
+import { Search, SlidersHorizontal, Map as MapIcon, Loader2, CheckCircle2, Heart, X } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import RoomCard from '../components/RoomCard';
 import RoomDetails from '../components/RoomDetails';
@@ -24,6 +24,10 @@ const App: React.FC = () => {
     const [savedRoomIds, setSavedRoomIds] = useState<string[]>([]);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isVerificationOpen, setIsVerificationOpen] = useState(false);
+    const [showFilters, setShowFilters] = useState(false);
+    const [filterCity, setFilterCity] = useState('');
+    const [filterMinPrice, setFilterMinPrice] = useState('');
+    const [filterMaxPrice, setFilterMaxPrice] = useState('');
 
     useEffect(() => {
         fetchRooms();
@@ -251,7 +255,22 @@ const App: React.FC = () => {
         window.location.reload();
     };
 
-    const displayRooms = rooms;
+    const availableCities = [...new Set(rooms.map(r => r.city))].sort();
+
+    const activeFilterCount = [filterCity, filterMinPrice, filterMaxPrice].filter(Boolean).length;
+
+    const clearFilters = () => {
+        setFilterCity('');
+        setFilterMinPrice('');
+        setFilterMaxPrice('');
+    };
+
+    const displayRooms = rooms.filter(room => {
+        if (filterCity && room.city !== filterCity) return false;
+        if (filterMinPrice && room.pricePerWeek < Number(filterMinPrice)) return false;
+        if (filterMaxPrice && room.pricePerWeek > Number(filterMaxPrice)) return false;
+        return true;
+    });
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
@@ -331,10 +350,24 @@ const App: React.FC = () => {
                             <CheckCircle2 size={40} />
                         </div>
                         <h2 className="text-3xl font-bold text-slate-900 mb-2">Booking Request Sent!</h2>
-                        <p className="text-slate-600 mb-8">
-                            The landlord, <strong>{selectedRoom?.landlord.name}</strong>, has received your request.
-                            You will receive a confirmation email shortly.
+                        <p className="text-slate-600 mb-6">
+                            Your request for <strong>{selectedRoom?.title}</strong> has been submitted successfully.
                         </p>
+                        <div className="text-left bg-slate-50 border border-slate-200 rounded-xl p-5 mb-8 space-y-3">
+                            <p className="text-sm font-bold text-slate-700 uppercase tracking-wide">What happens next?</p>
+                            <div className="flex items-start gap-3">
+                                <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <p className="text-sm text-slate-600"><strong>Admin review</strong> — Our team will review your booking request.</p>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <p className="text-sm text-slate-600"><strong>Sent to landlord</strong> — Admin forwards it to <strong>{selectedRoom?.landlord.name}</strong> for approval.</p>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <p className="text-sm text-slate-600"><strong>Confirmation</strong> — Once the landlord approves, admin confirms your booking.</p>
+                            </div>
+                        </div>
                         <button
                             onClick={() => {
                                 setSelectedRoom(null);
@@ -348,14 +381,110 @@ const App: React.FC = () => {
                 ) : (
                     <>
                         {viewState === ViewState.HOME && (
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-xl font-bold text-slate-800">
-                                    {displayRooms.length} {displayRooms.length === 1 ? 'place' : 'places'} to stay
-                                </h2>
-                                <button className="flex items-center text-slate-600 hover:text-slate-900 font-medium bg-white px-4 py-2 rounded-lg shadow-sm border border-slate-200">
-                                    <SlidersHorizontal size={16} className="mr-2" />
-                                    Filters
-                                </button>
+                            <div className="mb-6">
+                                {/* Header row */}
+                                <div className="flex justify-between items-center mb-3">
+                                    <h2 className="text-xl font-bold text-slate-800">
+                                        {displayRooms.length} {displayRooms.length === 1 ? 'place' : 'places'} to stay
+                                    </h2>
+                                    <button
+                                        onClick={() => setShowFilters(v => !v)}
+                                        className={`flex items-center gap-2 font-medium px-4 py-2 rounded-lg shadow-sm border transition ${showFilters ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-600 hover:text-slate-900 border-slate-200'}`}
+                                    >
+                                        <SlidersHorizontal size={16} />
+                                        Filters
+                                        {activeFilterCount > 0 && (
+                                            <span className={`text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center ${showFilters ? 'bg-white text-brand-600' : 'bg-brand-600 text-white'}`}>
+                                                {activeFilterCount}
+                                            </span>
+                                        )}
+                                    </button>
+                                </div>
+
+                                {/* Filter panel */}
+                                {showFilters && (
+                                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 mb-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                            {/* Location */}
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                                                    <MapIcon size={11} className="inline mr-1" />Location
+                                                </label>
+                                                <select
+                                                    value={filterCity}
+                                                    onChange={e => setFilterCity(e.target.value)}
+                                                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-slate-50"
+                                                >
+                                                    <option value="">All Cities</option>
+                                                    {availableCities.map(city => (
+                                                        <option key={city} value={city}>{city}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            {/* Min price */}
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                                                    Min Budget (£/week)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    min={0}
+                                                    placeholder="e.g. 100"
+                                                    value={filterMinPrice}
+                                                    onChange={e => setFilterMinPrice(e.target.value)}
+                                                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-slate-50"
+                                                />
+                                            </div>
+
+                                            {/* Max price */}
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                                                    Max Budget (£/week)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    min={0}
+                                                    placeholder="e.g. 400"
+                                                    value={filterMaxPrice}
+                                                    onChange={e => setFilterMaxPrice(e.target.value)}
+                                                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-slate-50"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Active filter pills + clear */}
+                                        {activeFilterCount > 0 && (
+                                            <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-slate-100">
+                                                <span className="text-xs text-slate-500 font-medium">Active:</span>
+                                                {filterCity && (
+                                                    <span className="flex items-center gap-1 bg-brand-50 text-brand-700 border border-brand-200 px-2.5 py-1 rounded-full text-xs font-semibold">
+                                                        <MapIcon size={10} /> {filterCity}
+                                                        <button onClick={() => setFilterCity('')} className="ml-1 hover:text-brand-900"><X size={10} /></button>
+                                                    </span>
+                                                )}
+                                                {filterMinPrice && (
+                                                    <span className="flex items-center gap-1 bg-brand-50 text-brand-700 border border-brand-200 px-2.5 py-1 rounded-full text-xs font-semibold">
+                                                        Min £{filterMinPrice}/wk
+                                                        <button onClick={() => setFilterMinPrice('')} className="ml-1 hover:text-brand-900"><X size={10} /></button>
+                                                    </span>
+                                                )}
+                                                {filterMaxPrice && (
+                                                    <span className="flex items-center gap-1 bg-brand-50 text-brand-700 border border-brand-200 px-2.5 py-1 rounded-full text-xs font-semibold">
+                                                        Max £{filterMaxPrice}/wk
+                                                        <button onClick={() => setFilterMaxPrice('')} className="ml-1 hover:text-brand-900"><X size={10} /></button>
+                                                    </span>
+                                                )}
+                                                <button
+                                                    onClick={clearFilters}
+                                                    className="ml-auto text-xs text-rose-500 hover:text-rose-700 font-semibold flex items-center gap-1"
+                                                >
+                                                    <X size={12} /> Clear all
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -379,8 +508,9 @@ const App: React.FC = () => {
                                     <button
                                         onClick={() => {
                                             setSearchQuery('');
-                                            setRooms(MOCK_ROOMS);
+                                            fetchRooms();
                                             setActiveFilters({});
+                                            clearFilters();
                                         }}
                                         className="mt-4 text-brand-600 font-medium hover:underline"
                                     >

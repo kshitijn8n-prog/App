@@ -11,6 +11,7 @@ import { MOCK_ROOMS } from '../../../constants'; // We need to move constants or
 
 import Enquiry from '../../../models/Enquiry';
 import Wishlist from '../../../models/Wishlist';
+import Booking from '../../../models/Booking';
 
 export async function POST() {
     try {
@@ -21,6 +22,7 @@ export async function POST() {
         await User.deleteMany({});
         await (Enquiry as any).deleteMany({});
         await (Wishlist as any).deleteMany({});
+        await (Booking as any).deleteMany({});
 
         // Seed Rooms
         // We need to drop 'id' from mock rooms as mongo generates _id
