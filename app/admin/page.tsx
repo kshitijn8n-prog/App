@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Room } from '../../types';
-import { Trash2, Edit, Plus, Save, X } from 'lucide-react';
+import { Trash2, Edit, Plus, Save, X, UserPlus, Building2, CheckCircle2, Loader2, ShieldCheck, Mail, Phone, Hash } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 
 const AdminPage = () => {
@@ -16,6 +16,10 @@ const AdminPage = () => {
     const [landlords, setLandlords] = useState<any[]>([]);
     const [submittingReply, setSubmittingReply] = useState<string | null>(null);
     const [updatingBooking, setUpdatingBooking] = useState<string | null>(null);
+    const [showAddLandlord, setShowAddLandlord] = useState(false);
+    const [addingLandlord, setAddingLandlord] = useState(false);
+    const [landlordForm, setLandlordForm] = useState({ name: '', email: '', password: '', licenseNumber: '', phone: '' });
+    const [landlordFormErrors, setLandlordFormErrors] = useState<Record<string, string>>({});
 
     const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -79,6 +83,46 @@ const AdminPage = () => {
             setLandlords(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Failed to fetch landlords', error);
+        }
+    };
+
+    const handleAddLandlord = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const errors: Record<string, string> = {};
+        if (!landlordForm.name.trim()) errors.name = 'Name is required';
+        if (!landlordForm.email.trim()) errors.email = 'Email is required';
+        if (!landlordForm.password.trim() || landlordForm.password.length < 6) errors.password = 'Password must be at least 6 characters';
+        if (Object.keys(errors).length > 0) { setLandlordFormErrors(errors); return; }
+        setLandlordFormErrors({});
+        setAddingLandlord(true);
+        try {
+            const res = await fetch('/api/admin/landlords', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...landlordForm, type: 'landlord', isVerified: true })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setShowAddLandlord(false);
+                setLandlordForm({ name: '', email: '', password: '', licenseNumber: '', phone: '' });
+                fetchLandlords();
+            } else {
+                setLandlordFormErrors({ general: data.error || 'Failed to add landlord' });
+            }
+        } catch {
+            setLandlordFormErrors({ general: 'Something went wrong. Please try again.' });
+        } finally {
+            setAddingLandlord(false);
+        }
+    };
+
+    const handleDeleteLandlord = async (id: string) => {
+        if (!confirm('Are you sure you want to remove this landlord?')) return;
+        try {
+            await fetch(`/api/admin/landlords?id=${id}`, { method: 'DELETE' });
+            fetchLandlords();
+        } catch {
+            alert('Failed to delete landlord');
         }
     };
 
@@ -250,9 +294,19 @@ const AdminPage = () => {
                     </div> */}
                 </div>
 
-                <div className="flex border-b border-slate-200 mb-8 space-x-8">
+                <div className="flex border-b border-slate-200 mb-8 space-x-8 overflow-x-auto">
                     <button
-                        className={`pb-4 text-sm font-bold transition-colors relative ${activeTab === 'pending' ? 'text-brand-600' : 'text-slate-400 hover:text-slate-600'}`}
+                        className={`pb-4 text-sm font-bold transition-colors relative whitespace-nowrap ${activeTab === 'landlords' ? 'text-brand-600' : 'text-slate-400 hover:text-slate-600'}`}
+                        onClick={() => setActiveTab('landlords')}
+                    >
+                        🏢 Landlords
+                        {activeTab === 'landlords' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-600 rounded-full" />}
+                        {landlords.length > 0 && (
+                            <span className="ml-2 bg-slate-100 text-slate-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{landlords.length}</span>
+                        )}
+                    </button>
+                    <button
+                        className={`pb-4 text-sm font-bold transition-colors relative whitespace-nowrap ${activeTab === 'pending' ? 'text-brand-600' : 'text-slate-400 hover:text-slate-600'}`}
                         onClick={() => setActiveTab('pending')}
                     >
                         🔔 Pending Approval
@@ -288,7 +342,195 @@ const AdminPage = () => {
                     </button>
                 </div>
 
-                {activeTab === 'pending' ? (
+                {activeTab === 'landlords' ? (
+                    <div className="space-y-6">
+                        {/* Header */}
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-800">Registered Landlords</h2>
+                                <p className="text-sm text-slate-500 mt-0.5">{landlords.length} landlord{landlords.length !== 1 ? 's' : ''} on the platform</p>
+                            </div>
+                            <button
+                                onClick={() => setShowAddLandlord(v => !v)}
+                                className="flex items-center gap-2 bg-brand-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-brand-700 transition shadow-md shadow-brand-100"
+                            >
+                                <UserPlus size={16} /> Add Landlord
+                            </button>
+                        </div>
+
+                        {/* Add landlord form */}
+                        {showAddLandlord && (
+                            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="font-bold text-slate-800 flex items-center gap-2"><UserPlus size={18} className="text-brand-600" /> Add New Landlord</h3>
+                                    <button onClick={() => { setShowAddLandlord(false); setLandlordFormErrors({}); }} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition"><X size={18} /></button>
+                                </div>
+
+                                {landlordFormErrors.general && (
+                                    <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm px-4 py-3 rounded-xl mb-4">{landlordFormErrors.general}</div>
+                                )}
+
+                                <form onSubmit={handleAddLandlord} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Name */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Full Name *</label>
+                                        <input
+                                            type="text"
+                                            placeholder="John Smith"
+                                            value={landlordForm.name}
+                                            onChange={e => setLandlordForm(f => ({ ...f, name: e.target.value }))}
+                                            className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${landlordFormErrors.name ? 'border-rose-400 bg-rose-50' : 'border-slate-200 bg-slate-50'}`}
+                                        />
+                                        {landlordFormErrors.name && <p className="text-xs text-rose-500 mt-1">{landlordFormErrors.name}</p>}
+                                    </div>
+
+                                    {/* Email */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5"><Mail size={10} className="inline mr-1" />Email *</label>
+                                        <input
+                                            type="email"
+                                            placeholder="landlord@example.com"
+                                            value={landlordForm.email}
+                                            onChange={e => setLandlordForm(f => ({ ...f, email: e.target.value }))}
+                                            className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${landlordFormErrors.email ? 'border-rose-400 bg-rose-50' : 'border-slate-200 bg-slate-50'}`}
+                                        />
+                                        {landlordFormErrors.email && <p className="text-xs text-rose-500 mt-1">{landlordFormErrors.email}</p>}
+                                    </div>
+
+                                    {/* Password */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Password *</label>
+                                        <input
+                                            type="password"
+                                            placeholder="Min 6 characters"
+                                            value={landlordForm.password}
+                                            onChange={e => setLandlordForm(f => ({ ...f, password: e.target.value }))}
+                                            className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${landlordFormErrors.password ? 'border-rose-400 bg-rose-50' : 'border-slate-200 bg-slate-50'}`}
+                                        />
+                                        {landlordFormErrors.password && <p className="text-xs text-rose-500 mt-1">{landlordFormErrors.password}</p>}
+                                    </div>
+
+                                    {/* License Number */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5"><Hash size={10} className="inline mr-1" />License Number</label>
+                                        <input
+                                            type="text"
+                                            placeholder="LN-123456 (optional)"
+                                            value={landlordForm.licenseNumber}
+                                            onChange={e => setLandlordForm(f => ({ ...f, licenseNumber: e.target.value }))}
+                                            className="w-full border border-slate-200 bg-slate-50 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                                        />
+                                    </div>
+
+                                    {/* Phone */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5"><Phone size={10} className="inline mr-1" />Phone</label>
+                                        <input
+                                            type="tel"
+                                            placeholder="+44 7000 000000 (optional)"
+                                            value={landlordForm.phone}
+                                            onChange={e => setLandlordForm(f => ({ ...f, phone: e.target.value }))}
+                                            className="w-full border border-slate-200 bg-slate-50 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                                        />
+                                    </div>
+
+                                    {/* Submit */}
+                                    <div className="md:col-span-2 flex justify-end gap-3 pt-2 border-t border-slate-100 mt-2">
+                                        <button type="button" onClick={() => { setShowAddLandlord(false); setLandlordFormErrors({}); }} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl font-bold text-sm transition">Cancel</button>
+                                        <button
+                                            type="submit"
+                                            disabled={addingLandlord}
+                                            className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 text-white rounded-xl font-bold text-sm hover:bg-brand-700 transition disabled:opacity-50"
+                                        >
+                                            {addingLandlord ? <><Loader2 size={15} className="animate-spin" /> Adding...</> : <><UserPlus size={15} /> Add Landlord</>}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+
+                        {/* Landlords table */}
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            {landlords.length === 0 ? (
+                                <div className="p-20 text-center">
+                                    <Building2 size={48} className="mx-auto text-slate-200 mb-4" />
+                                    <p className="text-slate-400 font-medium">No landlords registered yet.</p>
+                                    <button onClick={() => setShowAddLandlord(true)} className="mt-3 text-brand-600 font-bold text-sm hover:underline">Add your first landlord</button>
+                                </div>
+                            ) : (
+                                <table className="w-full text-left">
+                                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold text-xs uppercase tracking-wider">
+                                        <tr>
+                                            <th className="p-5">Landlord</th>
+                                            <th className="p-5 text-center">License No.</th>
+                                            <th className="p-5 text-center">Listings</th>
+                                            <th className="p-5 text-center">Status</th>
+                                            <th className="p-5 text-center">Joined</th>
+                                            <th className="p-5 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {landlords.map(landlord => (
+                                            <tr key={landlord.id} className="hover:bg-slate-50/60 transition">
+                                                <td className="p-5">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center text-sm shrink-0">
+                                                            {landlord.name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold text-slate-900 flex items-center gap-1">
+                                                                {landlord.name}
+                                                                {landlord.isVerified && <ShieldCheck size={13} className="text-blue-500" />}
+                                                            </p>
+                                                            <p className="text-xs text-slate-500 flex items-center gap-1"><Mail size={10} />{landlord.email}</p>
+                                                            {landlord.phone && landlord.phone !== 'N/A' && (
+                                                                <p className="text-xs text-slate-400 flex items-center gap-1"><Phone size={10} />{landlord.phone}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="p-5 text-center">
+                                                    <span className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-1 rounded-lg">{landlord.licenseNumber || '—'}</span>
+                                                </td>
+                                                <td className="p-5 text-center">
+                                                    <div className="flex flex-col items-center gap-0.5">
+                                                        <span className="font-bold text-slate-900 text-sm">{landlord.totalListings}</span>
+                                                        <span className="text-[10px] text-slate-400">
+                                                            {landlord.publishedListings} live · {landlord.pendingListings} pending
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="p-5 text-center">
+                                                    {landlord.isVerified ? (
+                                                        <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-bold">
+                                                            <CheckCircle2 size={11} /> Verified
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full text-xs font-bold">
+                                                            Unverified
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="p-5 text-center">
+                                                    <span className="text-xs text-slate-500">{new Date(landlord.joinedDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                                </td>
+                                                <td className="p-5 text-right">
+                                                    <button
+                                                        onClick={() => handleDeleteLandlord(landlord.id)}
+                                                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                                                        title="Remove landlord"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </div>
+                ) : activeTab === 'pending' ? (
                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <table className="w-full text-left">
                             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-medium text-sm">
